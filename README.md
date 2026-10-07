@@ -4,12 +4,10 @@
 [![Home Assistant Version](https://img.shields.io/badge/Home%20Assistant-2026.2.0%2B-blue.svg)](https://www.home-assistant.io/)
 [![Release](https://img.shields.io/github/v/release/eoasmxd/ha-integration-freya)](https://github.com/eoasmxd/ha-integration-freya/releases)
 
-Home Assistant integration for [Freya](https://github.com/eoasmxd/freya) — a lightweight microkernel AI agent system.  
+Home Assistant integration for [Freya](https://github.com/eoasmxd/freya) — a lightweight microkernel AI agent system.
 [Freya](https://github.com/eoasmxd/freya) 微内核智能体 · Home Assistant 原生集成。
 
 ---
-
-## English
 
 ### Overview
 
@@ -34,7 +32,7 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 
 #### Method 1: Automatic Deployment via Freya App (Recommended)
 
-1. Add the official repository and install the [Freya App](https://github.com/eoasmxd/ha-addons):  
+1. Add the official repository and install the [Freya App](https://github.com/eoasmxd/ha-addons):
    [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
 2. The app automatically deploys the integration into your `custom_components/freya` directory upon startup.
 3. Restart Home Assistant to load the integration.
@@ -74,8 +72,6 @@ response_variable: agent_reply
 
 ---
 
-## 简体中文
-
 ### 概述
 
 本集成是将 **Freya 微内核智能体系统** 接入 Home Assistant 的原生桥梁：
@@ -99,7 +95,7 @@ response_variable: agent_reply
 
 #### 方式一：通过 Freya 应用自动部署（首推 / 推荐）
 
-1. 将官方应用仓库添加至 Home Assistant 并安装 [Freya 应用](https://github.com/eoasmxd/ha-addons)：  
+1. 将官方应用仓库添加至 Home Assistant 并安装 [Freya 应用](https://github.com/eoasmxd/ha-addons)：
    [![在 Home Assistant 中添加此仓库](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
 2. 应用在启动时会自动将集成部署至 `custom_components/freya` 目录。
 3. 重启 Home Assistant 即可完成集成加载。
