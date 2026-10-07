@@ -1,0 +1,43 @@
+chat:
+  name: Chat
+  description: Send a text message to Freya and receive a response.
+  fields:
+    content:
+      name: Content
+      description: The message text to send to Freya.
+      required: true
+      example: "Summarize today's top tech news for me"
+      selector:
+        text:
+          multiline: true
+
+    sessionId:
+      name: Session ID
+      description: Session ID for multi-turn conversations (optional, single-turn if omitted).
+      required: false
+      example: "today-news"
+      selector:
+        text:
+
+    toolboxes:
+      name: Toolboxes
+      description: Active toolbox IDs (optional, supports a list or comma-separated string).
+      required: false
+      example: "homeassistant"
+      selector:
+        text:
+
+    skillId:
+      name: Skill ID
+      description: Target skill ID to prioritize or execute (optional).
+      required: false
+      selector:
+        text:
+
+    language:
+      name: Language
+      description: Expected language code for the response (optional, defaults to system language).
+      required: false
+      example: "zh"
+      selector:
+        text:

@@ -1,0 +1,14 @@
+{
+  "domain": "freya",
+  "name": "Freya AI Agent",
+  "codeowners": [
+    "@eoasmxd"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "conversation"
+  ],
+  "documentation": "https://github.com/eoasmxd/ha-integration-freya",
+  "iot_class": "cloud_push",
+  "version": "0.1.0"
+}

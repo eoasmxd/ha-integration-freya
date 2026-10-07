@@ -1,0 +1,61 @@
+{
+    "config": {
+        "flow_title": "Conversation Agent",
+        "step": {
+            "install_addon": {
+                "title": "Install Freya App",
+                "description": "The Freya app was not found. Please follow the steps below to install and start it:\n\n#### 1. Add App Repository\n{addon_badge}\n\n> **Or add manually**: [👉 Open App Store](/config/apps/available) ➔ Top-right menu ➔ Repositories ➔ Add:\n> `https://github.com/eoasmxd/ha-addons`\n\n#### 2. Install and Start\nSearch for and install **Freya** in the App Store. Once started, click **Submit** below."
+            },
+            "not_running": {
+                "title": "Start Freya App",
+                "description": "The Freya app is installed, but is currently **not running**.\n\nPlease go to [👉 Freya App Details]({app_info_url}) and start it.\n\nOnce started, click **Submit** below to complete setup."
+            },
+            "cannot_connect": {
+                "title": "Failed to Connect to Freya Service",
+                "description": "The Freya app is running, but Home Assistant is unable to connect to its internal communication service.\n\nThis usually occurs when the app is still starting up or has encountered an error.\n\nPlease check the logs in [👉 Freya App Details]({app_info_url}), then click **Submit** below to retry."
+            },
+            "hassio_confirm": {
+                "title": "Freya App Discovered",
+                "description": "A running Freya app has been detected. Do you want to set it up now?"
+            }
+        },
+        "abort": {
+            "already_configured": "Freya is already configured. Only one instance is needed.",
+            "already_in_progress": "Configuration flow is already in progress. Please continue in the existing card or dialog.",
+            "cannot_connect": "Unable to connect to Freya app communication service. Please ensure the app is running.",
+            "not_hassio": "Freya only supports the Home Assistant Supervisor environment.",
+            "unsupported_ha_version": "Freya requires Home Assistant 2026.2.0 or higher to support the new App architecture. Please update your Home Assistant.",
+            "reconfigure_successful": "Freya connection configuration has been successfully updated."
+        }
+    },
+    "services": {
+        "chat": {
+            "name": "Chat",
+            "description": "Send a text message to Freya and receive a response.",
+            "fields": {
+                "content": {
+                    "name": "Content",
+                    "description": "The message text to send to Freya.",
+                    "example": "Summarize today's top tech news for me"
+                },
+                "sessionId": {
+                    "name": "Session ID",
+                    "description": "Session ID for multi-turn conversations (optional, single-turn if omitted)."
+                },
+                "toolboxes": {
+                    "name": "Toolboxes",
+                    "description": "Active toolbox IDs (optional, supports a list or comma-separated string)."
+                },
+                "skillId": {
+                    "name": "Skill ID",
+                    "description": "Target skill ID to prioritize or execute (optional)."
+                },
+                "language": {
+                    "name": "Language",
+                    "description": "Expected language code for the response (optional, defaults to system language)."
+                }
+            }
+        }
+    }
+}
+
