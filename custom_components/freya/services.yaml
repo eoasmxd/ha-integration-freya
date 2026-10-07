@@ -11,7 +11,7 @@ chat:
         text:
           multiline: true
 
-    sessionId:
+    session_id:
       name: Session ID
       description: Session ID for multi-turn conversations (optional, single-turn if omitted).
       required: false
@@ -27,7 +27,7 @@ chat:
       selector:
         text:
 
-    skillId:
+    skill_id:
       name: Skill ID
       description: Target skill ID to prioritize or execute (optional).
       required: false

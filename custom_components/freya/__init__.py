@@ -53,7 +53,7 @@ async def async_setup_entry(
             "content": call.data["content"],
             "language": call.data.get("language", hass.config.language),
         }
-        if session_id := call.data.get("sessionId"):
+        if session_id := call.data.get("session_id"):
             payload["sessionId"] = session_id
         if toolboxes := call.data.get("toolboxes"):
             if isinstance(toolboxes, str):
@@ -64,7 +64,7 @@ async def async_setup_entry(
                 toolbox_list = []
             if toolbox_list:
                 payload["toolboxes"] = toolbox_list
-        if skill_id := call.data.get("skillId"):
+        if skill_id := call.data.get("skill_id"):
             payload["skillId"] = skill_id
 
         result = await entry.runtime_data.client.async_send_message(payload)
@@ -78,9 +78,9 @@ async def async_setup_entry(
             schema=vol.Schema(
                 {
                     vol.Required("content"): cv.string,
-                    vol.Optional("sessionId"): cv.string,
+                    vol.Optional("session_id"): cv.string,
                     vol.Optional("toolboxes"): vol.Any(cv.string, [cv.string]),
-                    vol.Optional("skillId"): cv.string,
+                    vol.Optional("skill_id"): cv.string,
                     vol.Optional("language"): cv.string,
                 }
             ),

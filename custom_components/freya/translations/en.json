@@ -4,7 +4,7 @@
         "step": {
             "install_addon": {
                 "title": "Install Freya App",
-                "description": "The Freya app was not found. Please follow the steps below to install and start it:\n\n#### 1. Add App Repository\n{addon_badge}\n\n> **Or add manually**: [👉 Open App Store](/config/apps/available) ➔ Top-right menu ➔ Repositories ➔ Add:\n> `https://github.com/eoasmxd/ha-addons`\n\n#### 2. Install and Start\nSearch for and install **Freya** in the App Store. Once started, click **Submit** below."
+                "description": "The Freya app was not found. Please follow the steps below to install and start it:\n\n#### 1. Add App Repository\n{addon_badge}\n\n> **Or add manually**: [👉 Open App Store](/config/apps/available) ➔ Top-right menu ➔ Repositories ➔ Add:\n> `{repo_url}`\n\n#### 2. Install and Start\nSearch for and install **Freya** in the App Store. Once started, click **Submit** below."
             },
             "not_running": {
                 "title": "Start Freya App",
@@ -38,7 +38,7 @@
                     "description": "The message text to send to Freya.",
                     "example": "Summarize today's top tech news for me"
                 },
-                "sessionId": {
+                "session_id": {
                     "name": "Session ID",
                     "description": "Session ID for multi-turn conversations (optional, single-turn if omitted)."
                 },
@@ -46,7 +46,7 @@
                     "name": "Toolboxes",
                     "description": "Active toolbox IDs (optional, supports a list or comma-separated string)."
                 },
-                "skillId": {
+                "skill_id": {
                     "name": "Skill ID",
                     "description": "Target skill ID to prioritize or execute (optional)."
                 },

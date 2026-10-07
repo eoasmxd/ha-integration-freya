@@ -24,9 +24,9 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 - 🗣️ **Native Assist Conversation Agent**: Select Freya directly in **Settings -> Voice assistants** to chat with your configured LLM agent.
 - 🛠️ **`freya.chat` Action / Service**:
   - `content`: Message payload.
-  - `sessionId`: Multi-turn context continuity (optional).
+  - `session_id`: Multi-turn context continuity (optional).
   - `toolboxes`: Pass allowed toolbox IDs (e.g. `["homeassistant"]`).
-  - `skillId`: Prioritize or trigger dedicated skills.
+  - `skill_id`: Prioritize or trigger dedicated skills.
   - `response`: Returns full agent response data for automations.
 - 🔍 **App Status Detection & Wizard**: Automatically detects the local Freya App status and guides you through setup seamlessly.
 
@@ -66,7 +66,7 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 action: freya.chat
 data:
   content: "Summarize the energy usage today"
-  sessionId: "daily-energy-summary"
+  session_id: "daily-energy-summary"
   toolboxes:
     - homeassistant
 response_variable: agent_reply
@@ -89,9 +89,9 @@ response_variable: agent_reply
 - 🗣️ **原生 Assist 对话代理**：在 **设置 -> 语音助手** 中即可直接将 Freya 选定为默认助手。
 - 🛠️ **`freya.chat` 服务/动作**：
   - `content`：用户提问文本。
-  - `sessionId`：可选会话标识，用于多轮上下文连续追踪。
+  - `session_id`：可选会话标识，用于多轮上下文连续追踪。
   - `toolboxes`：可选工具箱列表（如 `["homeassistant"]`），按需激活工具权限。
-  - `skillId`：可选技能标识，直接命中指定任务技能。
+  - `skill_id`：可选技能标识，直接命中指定任务技能。
   - `response`：支持在自动化中接收智能体的结构化返回结果。
 - 🔍 **应用状态检测与引导**：自动检测本地 Freya 应用运行状态，并在未安装或未启动时提供无缝引导。
 
@@ -131,7 +131,7 @@ response_variable: agent_reply
 action: freya.chat
 data:
   content: "帮我总结一下今天各个房间的温度情况"
-  sessionId: "temperature-check"
+  session_id: "temperature-check"
   toolboxes:
     - homeassistant
 response_variable: agent_reply

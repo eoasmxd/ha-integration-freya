@@ -18,6 +18,7 @@ from .const import CONF_URL, DOMAIN, LOGGER
 
 MIN_HA_VERSION = "2026.2.0"
 
+ADDON_REPO_URL = "https://github.com/eoasmxd/ha-addons"
 ADDON_REPO_BADGE = (
     "[![Add repository to Home Assistant]"
     "(https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)]"
@@ -198,7 +199,10 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="install_addon",
-            description_placeholders={"addon_badge": ADDON_REPO_BADGE},
+            description_placeholders={
+                "addon_badge": ADDON_REPO_BADGE,
+                "repo_url": ADDON_REPO_URL,
+            },
         )
 
     async def async_step_not_running(

@@ -1,6 +1,9 @@
 {
   "domain": "freya",
   "name": "Freya AI Agent",
+  "after_dependencies": [
+    "hassio"
+  ],
   "codeowners": [
     "@eoasmxd"
   ],
