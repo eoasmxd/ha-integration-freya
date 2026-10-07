@@ -3,9 +3,8 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/default)
 [![Home Assistant Version](https://img.shields.io/badge/Home%20Assistant-2026.2.0%2B-blue.svg)](https://www.home-assistant.io/)
 [![Release](https://img.shields.io/github/v/release/eoasmxd/ha-integration-freya)](https://github.com/eoasmxd/ha-integration-freya/releases)
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eoasmxd&repository=ha-integration-freya&category=integration)
 
-Home Assistant integration for [Freya](https://github.com/eoasmxd/freya) — a lightweight microkernel AI agent system.
+Home Assistant integration for [Freya](https://github.com/eoasmxd/freya) — a lightweight microkernel AI agent system.  
 [Freya](https://github.com/eoasmxd/freya) 微内核智能体 · Home Assistant 原生集成。
 
 ---
@@ -33,14 +32,21 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 
 ### Installation
 
-#### Method 1: Via HACS (Recommended)
+#### Method 1: Automatic Deployment via Freya App (Recommended)
 
-1. Click the button below to add this repository directly to HACS:
-   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eoasmxd&repository=ha-integration-freya&category=integration)
-2. Or manually in HACS: Go to **HACS -> Integrations -> 3 dots (top right) -> Custom repositories**, add `https://github.com/eoasmxd/ha-integration-freya` with category `Integration`.
-3. Click **Download**, then restart Home Assistant.
+1. Add the official repository and install the [Freya App](https://github.com/eoasmxd/ha-addons):  
+   [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+2. The app automatically deploys the integration into your `custom_components/freya` directory upon startup.
+3. Restart Home Assistant to load the integration.
 
-#### Method 2: Manual Installation
+#### Method 2: Via HACS (Custom Repository)
+
+1. In Home Assistant, open **HACS -> Integrations**.
+2. Click the three dots menu (top right) and select **Custom repositories**.
+3. Add repository URL: `https://github.com/eoasmxd/ha-integration-freya` with category `Integration`.
+4. Click **Download**, then restart Home Assistant.
+
+#### Method 3: Manual Installation
 
 1. Download the latest release archive from [Releases](https://github.com/eoasmxd/ha-integration-freya/releases).
 2. Extract the `custom_components/freya` folder into your Home Assistant `<config>/custom_components/freya`.
@@ -91,14 +97,21 @@ response_variable: agent_reply
 
 ### 安装方法
 
-#### 方式一：通过 HACS 安装（推荐）
+#### 方式一：通过 Freya 应用自动部署（首推 / 推荐）
 
-1. 点击下方按钮，一键将本仓库添加至 HACS：
-   [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=eoasmxd&repository=ha-integration-freya&category=integration)
-2. 或在 HACS 中手动添加：进入 **HACS -> 集成 -> 右上角三个点 -> 自定义存储库**，输入 `https://github.com/eoasmxd/ha-integration-freya`，类型选择 `集成 (Integration)`。
-3. 点击 **下载** 并重启 Home Assistant。
+1. 将官方应用仓库添加至 Home Assistant 并安装 [Freya 应用](https://github.com/eoasmxd/ha-addons)：  
+   [![在 Home Assistant 中添加此仓库](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+2. 应用在启动时会自动将集成部署至 `custom_components/freya` 目录。
+3. 重启 Home Assistant 即可完成集成加载。
 
-#### 方式二：手动安装
+#### 方式二：通过 HACS 安装（自定义存储库）
+
+1. 在 Home Assistant 中打开 **HACS -> 集成**。
+2. 点击右上角菜单（三个点），选择 **自定义存储库**。
+3. 填入仓库地址：`https://github.com/eoasmxd/ha-integration-freya`，类型选择 **集成 (Integration)**。
+4. 点击 **下载** 并重启 Home Assistant。
+
+#### 方式三：手动下载安装
 
 1. 从 [Releases 页面](https://github.com/eoasmxd/ha-integration-freya/releases) 下载最新发行版压缩包。
 2. 将其中的 `custom_components/freya` 目录复制至 Home Assistant 配置目录下的 `custom_components/freya`。
