@@ -12,7 +12,7 @@
     "conversation"
   ],
   "documentation": "https://github.com/eoasmxd/ha-integration-freya",
-  "issue_tracker": "https://github.com/eoasmxd/ha-integration-freya/issues",
   "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/eoasmxd/ha-integration-freya/issues",
   "version": "0.7.2"
 }
