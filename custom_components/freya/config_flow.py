@@ -7,14 +7,19 @@ from __future__ import annotations
 from typing import Any
 
 from awesomeversion import AwesomeVersion
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
-from .api import FreyaApiClient, FreyaApiClientCommunicationError
-from .const import CONF_URL, DOMAIN, LOGGER
+from .api import (
+    FreyaApiClient,
+    FreyaApiClientAuthenticationError,
+    FreyaApiClientCommunicationError,
+)
+from .const import CONF_IS_ADDON, CONF_PASSWORD, CONF_URL, DOMAIN, LOGGER
 
 MIN_HA_VERSION = "2026.2.0"
 
@@ -63,7 +68,58 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
     _addon_slug: str | None = None
-    _internal_ws_url: str | None = None
+    _internal_url: str | None = None
+
+    async def async_step_hassio(
+        self,
+        discovery_info: HassioServiceInfo,
+    ) -> config_entries.ConfigFlowResult:
+        """Handle discovery flow from Supervisor.
+        处理 Supervisor 广播的自动发现流程。
+        """
+        await self.async_set_unique_id(DOMAIN)
+        self.context["title_placeholders"] = {"name": "Freya"}
+        slug = discovery_info.slug
+        host = discovery_info.config.get("host") or slug.replace("_", "-")
+        port = discovery_info.config.get("port", 3000)
+        self._internal_url = f"http://{host}:{port}"
+        self._abort_if_unique_id_configured(
+            updates={
+                CONF_URL: self._internal_url,
+                CONF_PASSWORD: "",
+                CONF_IS_ADDON: True,
+            }
+        )
+
+        client = FreyaApiClient(self._internal_url, async_get_clientsession(self.hass))
+        try:
+            await client.async_validate_connection()
+        except FreyaApiClientCommunicationError:
+            return self.async_abort(reason="cannot_connect")
+
+        return await self.async_step_hassio_confirm()
+
+    async def async_step_hassio_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Confirm discovery step with the user.
+        处理用户对自动发现的确认。
+        """
+        if user_input is not None:
+            return self.async_create_entry(
+                title="Freya",
+                data={
+                    CONF_URL: self._internal_url,
+                    CONF_PASSWORD: "",
+                    CONF_IS_ADDON: True,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="hassio_confirm",
+            description_placeholders={"addon": "Freya"},
+        )
 
     async def async_step_user(
         self,
@@ -96,35 +152,27 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         统一处理 Freya 应用的状态检测、连通性验证与入口创建或更新。
         """
         if "hassio" not in self.hass.config.components:
-            return self.async_abort(reason="not_hassio")
+            return await self.async_step_manual_config()
 
         freya_addon = await _async_find_freya_addon(self.hass)
 
         if self.source == config_entries.SOURCE_RECONFIGURE:
             reconfigure_entry = self._get_reconfigure_entry()
-            if freya_addon is None and CONF_URL in reconfigure_entry.data:
-                fallback_url = reconfigure_entry.data[CONF_URL]
-                client = FreyaApiClient(fallback_url, async_get_clientsession(self.hass))
-                try:
-                    await client.async_validate_connection()
-                    return self.async_update_reload_and_abort(
-                        reconfigure_entry,
-                        data={**reconfigure_entry.data, CONF_URL: fallback_url},
-                    )
-                except FreyaApiClientCommunicationError:
-                    return await self.async_step_cannot_connect()
+            is_addon_before = reconfigure_entry.data.get(CONF_IS_ADDON, False)
+            if not is_addon_before or freya_addon is None:
+                return await self.async_step_manual_config()
 
         if freya_addon is None:
-            return await self.async_step_install_addon()
+            return await self.async_step_choose_install()
 
         self._addon_slug = freya_addon["slug"]
 
         if freya_addon["state"] != "started":
             return await self.async_step_not_running()
 
-        internal_ws_url = f"ws://{freya_addon['hostname']}:3000/ws"
+        internal_url = f"http://{freya_addon['hostname']}:3000"
 
-        client = FreyaApiClient(internal_ws_url, async_get_clientsession(self.hass))
+        client = FreyaApiClient(internal_url, async_get_clientsession(self.hass))
         try:
             await client.async_validate_connection()
         except FreyaApiClientCommunicationError:
@@ -134,57 +182,93 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             reconfigure_entry = self._get_reconfigure_entry()
             return self.async_update_reload_and_abort(
                 reconfigure_entry,
-                data={**reconfigure_entry.data, CONF_URL: internal_ws_url},
+                data={
+                    **reconfigure_entry.data,
+                    CONF_URL: internal_url,
+                    CONF_PASSWORD: "",
+                    CONF_IS_ADDON: True,
+                },
             )
 
         return self.async_create_entry(
             title="Freya",
             data={
-                CONF_URL: internal_ws_url,
+                CONF_URL: internal_url,
+                CONF_PASSWORD: "",
+                CONF_IS_ADDON: True,
             },
         )
 
-    async def async_step_hassio(
-        self,
-        discovery_info: HassioServiceInfo,
-    ) -> config_entries.ConfigFlowResult:
-        """Handle discovery flow from Supervisor.
-        处理 Supervisor 广播的自动发现流程。
-        """
-        await self.async_set_unique_id(DOMAIN)
-        self.context["title_placeholders"] = {"name": "Freya"}
-        slug = discovery_info.slug
-        host = discovery_info.config.get("host") or slug.replace("_", "-")
-        port = discovery_info.config.get("port", 3000)
-        self._internal_ws_url = f"ws://{host}:{port}/ws"
-        self._abort_if_unique_id_configured(updates={CONF_URL: self._internal_ws_url})
 
-        client = FreyaApiClient(self._internal_ws_url, async_get_clientsession(self.hass))
-        try:
-            await client.async_validate_connection()
-        except FreyaApiClientCommunicationError:
-            return self.async_abort(reason="cannot_connect")
-
-        return await self.async_step_hassio_confirm()
-
-    async def async_step_hassio_confirm(
+    async def async_step_choose_install(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> config_entries.ConfigFlowResult:
-        """Confirm discovery step with the user.
-        处理用户对自动发现的确认。
+        """Menu to choose between add-on install or manual config.
+        未发现应用时，引导选择安装应用或手动配置外部服务。
         """
+        return self.async_show_menu(
+            step_id="choose_install",
+            menu_options=["install_addon", "manual_config"],
+        )
+
+    async def async_step_manual_config(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Handle manual configuration for external Freya app.
+        处理外部 Freya 应用的手动配置。
+        """
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(
-                title="Freya",
-                data={
-                    CONF_URL: self._internal_ws_url,
-                },
-            )
+            url = user_input[CONF_URL]
+            password = user_input.get(CONF_PASSWORD, "")
+
+            client = FreyaApiClient(url, async_get_clientsession(self.hass), password)
+            try:
+                await client.async_validate_connection()
+                if self.source == config_entries.SOURCE_RECONFIGURE:
+                    reconfigure_entry = self._get_reconfigure_entry()
+                    return self.async_update_reload_and_abort(
+                        reconfigure_entry,
+                        data={
+                            **reconfigure_entry.data,
+                            CONF_URL: url,
+                            CONF_PASSWORD: password,
+                            CONF_IS_ADDON: False,
+                        },
+                    )
+                return self.async_create_entry(
+                    title="Freya",
+                    data={
+                        CONF_URL: url,
+                        CONF_PASSWORD: password,
+                        CONF_IS_ADDON: False,
+                    },
+                )
+            except FreyaApiClientAuthenticationError:
+                errors["base"] = "invalid_auth"
+            except FreyaApiClientCommunicationError:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                errors["base"] = "unknown"
+
+        default_url = ""
+        default_password = ""
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            entry = self._get_reconfigure_entry()
+            default_url = entry.data.get(CONF_URL, "")
+            default_password = entry.data.get(CONF_PASSWORD, "")
 
         return self.async_show_form(
-            step_id="hassio_confirm",
-            description_placeholders={"addon": "Freya"},
+            step_id="manual_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_URL, default=default_url): str,
+                    vol.Optional(CONF_PASSWORD, default=default_password): str,
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_install_addon(

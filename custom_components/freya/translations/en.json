@@ -14,16 +14,36 @@
                 "title": "Failed to Connect to Freya Service",
                 "description": "The Freya app is running, but Home Assistant is unable to connect to its internal communication service.\n\nThis usually occurs when the app is still starting up or has encountered an error.\n\nPlease check the logs in [👉 Freya App Details]({app_info_url}), then click **Submit** below to retry."
             },
+            "choose_install": {
+                "title": "Choose Deployment Type",
+                "description": "No local Freya app detected. Would you like to install the local app or manually configure an external Freya service?",
+                "menu_options": {
+                    "install_addon": "Install Freya App (Recommended)",
+                    "manual_config": "Configure External Freya Service"
+                }
+            },
+            "manual_config": {
+                "title": "Configure External Freya",
+                "description": "Please enter the connection parameters for your independently deployed Freya service.",
+                "data": {
+                    "url": "Service URL (e.g. http://192.168.1.100:3000)",
+                    "password": "Password/Token (if any)"
+                }
+            },
             "hassio_confirm": {
                 "title": "Freya App Discovered",
                 "description": "A running Freya app has been detected. Do you want to set it up now?"
             }
         },
+        "error": {
+            "cannot_connect": "Failed to connect to the specified Freya service. Please check the URL.",
+            "invalid_auth": "Invalid access credentials or wrong password.",
+            "unknown": "An unknown error occurred. Please check logs."
+        },
         "abort": {
             "already_configured": "Freya is already configured. Only one instance is needed.",
             "already_in_progress": "Configuration flow is already in progress. Please continue in the existing card or dialog.",
             "cannot_connect": "Unable to connect to Freya app communication service. Please ensure the app is running.",
-            "not_hassio": "Freya only supports the Home Assistant Supervisor environment.",
             "unsupported_ha_version": "Freya requires Home Assistant 2026.2.0 or higher to support the new App architecture. Please update your Home Assistant.",
             "reconfigure_successful": "Freya connection configuration has been successfully updated."
         }
@@ -41,6 +61,10 @@
                 "session_id": {
                     "name": "Session ID",
                     "description": "Session ID for multi-turn conversations (optional, single-turn if omitted)."
+                },
+                "attachments": {
+                    "name": "Attachments",
+                    "description": "Attachments to include (URLs or local file paths in Home Assistant)."
                 },
                 "toolboxes": {
                     "name": "Toolboxes",

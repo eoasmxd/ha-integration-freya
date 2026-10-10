@@ -8,4 +8,6 @@ LOGGER: Logger = getLogger(__package__)
 
 DOMAIN = "freya"
 CONF_URL = "url"
+CONF_PASSWORD = "password"
+CONF_IS_ADDON = "is_addon"
 SERVICE_CHAT = "chat"

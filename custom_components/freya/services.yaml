@@ -19,6 +19,14 @@ chat:
       selector:
         text:
 
+    attachments:
+      name: Attachments
+      description: Media attachments or local file paths/URLs (optional, supports a list or single URL/path).
+      required: false
+      example: "/config/www/snapshot.jpg"
+      selector:
+        text:
+
     toolboxes:
       name: Toolboxes
       description: Active toolbox IDs (optional, supports a list or comma-separated string).
