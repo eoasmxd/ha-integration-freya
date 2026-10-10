@@ -14,6 +14,7 @@ import uuid
 import voluptuous as vol
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
@@ -24,6 +25,7 @@ from .const import (
     CONF_PASSWORD,
     CONF_URL,
     DOMAIN,
+    LOGGER,
     SERVICE_CHAT,
 )
 from .data import FreyaConfigEntry, FreyaData
@@ -84,7 +86,8 @@ async def _async_resolve_attachments(
 
         local_path = Path(item_path if os.path.isabs(item_path) else hass.config.path(item_path))
         if not await asyncio.to_thread(local_path.is_file):
-            continue
+            LOGGER.warning("Attachment file does not exist: %s", item_path)
+            raise HomeAssistantError(f"Attachment file not found: {item_path}")
 
         if is_addon:
             resolved_local = local_path.resolve()
