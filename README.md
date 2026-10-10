@@ -23,6 +23,7 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 - 🛠️ **`freya.chat` Action / Service**:
   - `content`: Message payload.
   - `session_id`: Multi-turn context continuity (optional).
+  - `attachments`: Optional list/string of attachments (supports web URLs or local paths like `/config/www/snapshot.jpg`).
   - `toolboxes`: Pass allowed toolbox IDs (e.g. `["homeassistant"]`).
   - `skill_id`: Prioritize or trigger dedicated skills.
   - `response`: Returns full agent response data for automations.
@@ -86,6 +87,7 @@ response_variable: agent_reply
 - 🛠️ **`freya.chat` 服务/动作**：
   - `content`：用户提问文本。
   - `session_id`：可选会话标识，用于多轮上下文连续追踪。
+  - `attachments`：可选附件列表，支持公网 URL 或 Home Assistant 本地文件路径（如 `/config/www/snapshot.jpg`）。
   - `toolboxes`：可选工具箱列表（如 `["homeassistant"]`），按需激活工具权限。
   - `skill_id`：可选技能标识，直接命中指定任务技能。
   - `response`：支持在自动化中接收智能体的结构化返回结果。

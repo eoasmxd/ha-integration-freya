@@ -7,6 +7,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from pathlib import Path
+from urllib.parse import quote
 import uuid
 from typing import Any
 
@@ -31,6 +33,12 @@ class FreyaApiClientCommunicationError(FreyaApiClientError):
     """
 
 
+class FreyaApiClientAuthenticationError(FreyaApiClientError):
+    """Exception raised when authentication fails.
+    鉴权失败或密码错误时引发的异常。
+    """
+
+
 class FreyaApiClient:
     """Client for communicating with the Freya WebSocket service.
     与 Freya WebSocket 服务通信的客户端。
@@ -40,18 +48,28 @@ class FreyaApiClient:
         self,
         url: str,
         session: aiohttp.ClientSession,
+        password: str | None = None,
     ) -> None:
-        """Initialize the client and normalize the WebSocket URL.
-        初始化客户端并标准化 WebSocket 地址。
+        """Initialize the client and parse base URLs.
+        初始化客户端并解析基础通信地址。
         """
-        if url.startswith("http://"):
-            url = f"ws://{url[7:]}"
-        elif url.startswith("https://"):
-            url = f"wss://{url[8:]}"
-        elif not url.startswith(("ws://", "wss://")):
-            url = f"ws://{url}"
-        self._url = url.rstrip("/")
+        base_url = url.rstrip("/")
+        if not base_url.startswith(("http://", "https://", "ws://", "wss://")):
+            base_url = f"http://{base_url}"
+
+        parsed = URL(base_url)
+        url_path = parsed.path.rstrip("/")
+        if url_path.endswith("/ws"):
+            url_path = url_path[:-3]
+        parsed = parsed.with_path(url_path)
+
+        is_secure = parsed.scheme in ("https", "wss")
+        self._http_url = str(parsed.with_scheme("https" if is_secure else "http")).rstrip("/")
+        self._ws_url = str(parsed.with_scheme("wss" if is_secure else "ws")).rstrip("/")
+
         self._session = session
+        self._password = password
+        self._token: str | None = None
         self._client_id = f"{CLIENT_ID_PREFIX}:{uuid.uuid4().hex[:8]}"
 
         self._ws: aiohttp.ClientWebSocketResponse | None = None
@@ -61,19 +79,86 @@ class FreyaApiClient:
         self._pending_futures: dict[str, asyncio.Future[str]] = {}
         self._pending_deltas: dict[str, list[str]] = {}
 
+    @property
+    def http_url(self) -> str:
+        """Return the HTTP/HTTPS base URL.
+        返回 HTTP/HTTPS 基础地址。
+        """
+        return self._http_url
+
     def _build_ws_url(self) -> str:
         """Build the complete WebSocket URL with query parameters.
         构建携带客户端查询参数的完整 WebSocket URL。
         """
-        return str(
-            URL(self._url).update_query(
-                {
-                    "clientId": self._client_id,
-                    "channelType": CHANNEL_TYPE,
-                    "sessionId": f"{CLIENT_ID_PREFIX}:main",
-                }
-            )
-        )
+        query = {
+            "clientId": self._client_id,
+            "channelType": CHANNEL_TYPE,
+            "sessionId": f"{CLIENT_ID_PREFIX}:main",
+        }
+        ws_url = f"{self._ws_url}/ws"
+        return str(URL(ws_url).update_query(query))
+
+    def _get_auth_headers(self) -> dict[str, str]:
+        """Return authorization headers if a valid session token exists.
+        如果有会话 Token，则返回对应的认证请求头。
+        """
+        headers: dict[str, str] = {}
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
+        return headers
+
+    async def async_login(self) -> None:
+        """Authenticate with Freya and acquire a session token.
+        向 Freya 发起鉴权，换取会话 Token。如果服务端未开启鉴权，依然会返回一个可用 Token。
+        """
+        login_url = f"{self.http_url}/api/auth/login"
+        payload = {}
+        if self._password:
+            payload["password"] = self._password
+            
+        try:
+            async with self._session.post(login_url, json=payload) as resp:
+                data = await resp.json()
+                if resp.status == 200 and data.get("success"):
+                    self._token = data.get("token")
+                else:
+                    err_msg = data.get("error", "Unknown auth error")
+                    raise FreyaApiClientAuthenticationError(f"Login failed: {err_msg}")
+        except aiohttp.ClientError as err:
+            raise FreyaApiClientCommunicationError(f"Request to login failed: {err}") from err
+
+    async def async_upload_file(self, file_path: str) -> dict[str, Any]:
+        """Upload a local file to Freya via HTTP /ws/upload.
+        通过 HTTP /ws/upload 将本地文件上传至 Freya 工作区缓存。
+        """
+        path_obj = Path(file_path)
+        filename = path_obj.name
+        upload_url = f"{self.http_url}/ws/upload"
+
+        data = await asyncio.to_thread(path_obj.read_bytes)
+        if self._password and not self._token:
+            await self.async_login()
+
+        headers = self._get_auth_headers()
+        headers["Content-Type"] = "application/octet-stream"
+        headers["X-File-Name"] = quote(filename)
+
+        try:
+            async with self._session.post(upload_url, data=data, headers=headers) as resp:
+                if resp.status in (401, 403):
+                    self._token = None
+                    raise FreyaApiClientAuthenticationError("Token expired during upload")
+                if resp.status != 200:
+                    err_text = await resp.text()
+                    raise FreyaApiClientCommunicationError(
+                        f"Upload failed with status {resp.status}: {err_text}"
+                    )
+                json_res = await resp.json()
+                return json_res.get("data", {})
+        except aiohttp.ClientError as err:
+            raise FreyaApiClientCommunicationError(
+                f"Failed to upload file to Freya: {err}"
+            ) from err
 
     async def async_connect(self) -> None:
         """Start the background WebSocket maintenance task.
@@ -89,8 +174,15 @@ class FreyaApiClient:
         """
         while not self._closed:
             try:
+                if self._password and not self._token:
+                    await self.async_login()
+
                 ws_url = self._build_ws_url()
-                async with self._session.ws_connect(ws_url, autoping=True) as ws:
+                async with self._session.ws_connect(
+                    ws_url,
+                    autoping=True,
+                    headers=self._get_auth_headers(),
+                ) as ws:
                     self._ws = ws
                     await ws.send_json(
                         {
@@ -115,6 +207,14 @@ class FreyaApiClient:
 
                         self._handle_incoming_message(msg.data)
 
+            except FreyaApiClientAuthenticationError as err:
+                LOGGER.debug("Freya authentication error in connection loop: %s", err)
+                self._token = None
+                await asyncio.sleep(5)
+            except aiohttp.WSServerHandshakeError as err:
+                if err.status in (401, 403):
+                    LOGGER.debug("Freya WebSocket handshake rejected (401/403). Resetting token.")
+                    self._token = None
             except asyncio.CancelledError:
                 break
             except Exception as err:
@@ -172,9 +272,15 @@ class FreyaApiClient:
         验证与 Freya 的 WebSocket 连通性。
         """
         try:
+            if self._password:
+                await self.async_login()
             ws_url = self._build_ws_url()
             async with asyncio.timeout(10):
-                async with self._session.ws_connect(ws_url, autoping=True) as ws:
+                async with self._session.ws_connect(
+                    ws_url,
+                    autoping=True,
+                    headers=self._get_auth_headers(),
+                ) as ws:
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
                             try:
