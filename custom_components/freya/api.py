@@ -85,6 +85,7 @@ class FreyaApiClient:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._listen_task: asyncio.Task | None = None
         self._closed = False
+        self._incompatible_error: str | None = None
         self._connected_event = asyncio.Event()
         self._pending_futures: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._pending_deltas: dict[str, list[str]] = {}
@@ -123,7 +124,7 @@ class FreyaApiClient:
         """
         if not isinstance(version_str, str) or not version_str.strip():
             raise FreyaApiClientIncompatibleVersionError("Missing version from Freya server")
-        major = version_str.strip().lstrip("v").split(".")[0]
+        major = version_str.strip().split(".")[0]
         if not major.isdigit() or int(major) != SUPPORTED_SERVER_MAJOR_VERSION:
             raise FreyaApiClientIncompatibleVersionError(
                 f"Incompatible Freya version '{version_str}', expected major version {SUPPORTED_SERVER_MAJOR_VERSION}"
@@ -186,6 +187,8 @@ class FreyaApiClient:
         """Start the background WebSocket maintenance task.
         启动常驻 WebSocket 连接后台维护任务。
         """
+        if self._incompatible_error:
+            return
         if self._listen_task is None or self._listen_task.done():
             self._closed = False
             self._listen_task = asyncio.create_task(self._connection_loop())
@@ -235,6 +238,7 @@ class FreyaApiClient:
                 await asyncio.sleep(5)
             except FreyaApiClientIncompatibleVersionError as err:
                 LOGGER.error("Freya version incompatible: %s", err)
+                self._incompatible_error = str(err)
                 self._closed = True
                 break
             except aiohttp.WSServerHandshakeError as err:
@@ -319,6 +323,7 @@ class FreyaApiClient:
                             if payload.get("event") in ("server:connected", "server:reconnected"):
                                 data = payload.get("data") or {}
                                 self._validate_server_version(data.get("version"))
+                                self._incompatible_error = None
                                 return True
                         elif msg.type in (
                             aiohttp.WSMsgType.CLOSE,
@@ -337,13 +342,35 @@ class FreyaApiClient:
         """Send a message to Freya and await the final reply text.
         发送消息至 Freya 并等待最终回复文本。
         """
+        if self._ws is None or self._ws.closed:
+            self._closed = False
+            self._incompatible_error = None
+
         await self.async_connect()
 
-        try:
-            async with asyncio.timeout(10):
-                await self._connected_event.wait()
-        except TimeoutError as err:
-            raise FreyaApiClientCommunicationError("Freya service is not connected") from err
+        if not self._connected_event.is_set():
+            wait_task = asyncio.create_task(self._connected_event.wait())
+            tasks = {wait_task}
+            if self._listen_task and not self._listen_task.done():
+                tasks.add(self._listen_task)
+
+            try:
+                done, _ = await asyncio.wait(
+                    tasks,
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=10,
+                )
+            finally:
+                if not wait_task.done():
+                    wait_task.cancel()
+
+            if self._incompatible_error:
+                raise FreyaApiClientIncompatibleVersionError(self._incompatible_error)
+
+            if not self._connected_event.is_set():
+                if not done:
+                    raise FreyaApiClientCommunicationError("Timed out waiting for Freya connection")
+                raise FreyaApiClientCommunicationError("Freya service is not connected")
 
         if isinstance(data, dict):
             payload_data = dict(data)

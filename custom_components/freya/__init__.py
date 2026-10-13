@@ -14,12 +14,16 @@ import uuid
 import voluptuous as vol
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
-from .api import FreyaApiClient
+from .api import (
+    FreyaApiClient,
+    FreyaApiClientCommunicationError,
+    FreyaApiClientIncompatibleVersionError,
+)
 from .const import (
     CONF_IS_ADDON,
     CONF_PASSWORD,
@@ -126,6 +130,13 @@ async def async_setup_entry(
         client=client,
         integration=async_get_loaded_integration(hass, entry.domain),
     )
+
+    try:
+        await client.async_validate_connection()
+    except FreyaApiClientIncompatibleVersionError as err:
+        raise ConfigEntryError(f"Freya server version incompatible: {err}") from err
+    except FreyaApiClientCommunicationError:
+        pass
 
     await client.async_connect()
 

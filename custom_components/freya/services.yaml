@@ -51,7 +51,7 @@ chat:
         text:
 
   response:
-    optional: false
+    optional: true
     fields:
       text:
         description: Reply text from Freya.
