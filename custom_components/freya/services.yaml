@@ -49,12 +49,3 @@ chat:
       example: "zh"
       selector:
         text:
-
-  response:
-    optional: true
-    fields:
-      text:
-        description: Reply text from Freya.
-        example: "The lights in the living room have been turned off."
-      attachments:
-        description: Media attachments or files returned from Freya (if any).

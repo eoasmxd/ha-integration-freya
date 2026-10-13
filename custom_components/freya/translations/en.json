@@ -80,18 +80,7 @@
                     "name": "Language",
                     "description": "Expected language code for the response (optional, defaults to system language)."
                 }
-            },
-            "response": {
-                "text": {
-                    "name": "Reply text",
-                    "description": "Text response returned from Freya."
-                },
-                "attachments": {
-                    "name": "Attachments",
-                    "description": "Media attachments or files returned from Freya (if any)."
-                }
             }
         }
     }
 }
-

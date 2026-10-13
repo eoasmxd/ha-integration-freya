@@ -80,16 +80,6 @@
                     "name": "语言",
                     "description": "期望回复的语言代码（可选，如 zh、en，默认跟随系统语言）。"
                 }
-            },
-            "response": {
-                "text": {
-                    "name": "回复内容",
-                    "description": "Freya 返回的文本回复。"
-                },
-                "attachments": {
-                    "name": "附件",
-                    "description": "Freya 返回的媒体或文件附件（若有）。"
-                }
             }
         }
     }
