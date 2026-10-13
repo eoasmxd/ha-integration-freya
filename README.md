@@ -26,7 +26,7 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
   - `attachments`: Optional list/string of attachments (supports web URLs or local paths like `/config/www/snapshot.jpg`).
   - `toolboxes`: Pass allowed toolbox IDs (e.g. `["homeassistant"]`).
   - `skill_id`: Prioritize or trigger dedicated skills.
-  - `response`: Returns full agent response data for automations.
+  - **Response**: Captures agent text response (`text`) via `response_variable`.
 - 🔍 **App Status Detection & Wizard**: Automatically detects the local Freya App status and guides you through setup seamlessly.
 
 ### Installation
@@ -69,6 +69,7 @@ data:
   toolboxes:
     - homeassistant
 response_variable: agent_reply
+# Access response text in subsequent steps: {{ agent_reply.text }}
 ```
 
 ---
@@ -90,7 +91,7 @@ response_variable: agent_reply
   - `attachments`：可选附件列表，支持公网 URL 或 Home Assistant 本地文件路径（如 `/config/www/snapshot.jpg`）。
   - `toolboxes`：可选工具箱列表（如 `["homeassistant"]`），按需激活工具权限。
   - `skill_id`：可选技能标识，直接命中指定任务技能。
-  - `response`：支持在自动化中接收智能体的结构化返回结果。
+  - **响应数据**：支持在自动化中通过 `response_variable` 接收智能体文本回复（通过 `.text` 获取）。
 - 🔍 **应用状态检测与引导**：自动检测本地 Freya 应用运行状态，并在未安装或未启动时提供无缝引导。
 
 ### 安装方法
@@ -133,6 +134,7 @@ data:
   toolboxes:
     - homeassistant
 response_variable: agent_reply
+# 后续步骤中可通过变量获取回复文本：{{ agent_reply.text }}
 ```
 
 ---

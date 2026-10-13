@@ -65,6 +65,8 @@ class FreyaConversationEntity(ConversationEntity):
         client = self.entry.runtime_data.client
         conversation_id = user_input.conversation_id or ulid.ulid_now()
 
+        intent_response = intent.IntentResponse(language=user_input.language)
+
         try:
             payload = {
                 "content": user_input.text,
@@ -72,14 +74,18 @@ class FreyaConversationEntity(ConversationEntity):
                 "language": user_input.language,
             }
 
-            response_text = await client.async_send_message(payload)
+            chat_res = await client.async_send_message(payload)
+            intent_response.async_set_speech(chat_res.text)
+            if chat_res.attachments:
+                intent_response.data["attachments"] = chat_res.attachments
 
         except Exception as err:
             LOGGER.exception("Exception occurred while processing Freya conversation: %s", err)
-            response_text = f"Failed to request Freya: {err}"
+            intent_response.async_set_error(
+                intent.IntentResponseErrorCode.UNKNOWN,
+                f"Failed to request Freya: {err}",
+            )
 
-        intent_response = intent.IntentResponse(language=user_input.language)
-        intent_response.async_set_speech(response_text)
         return ConversationResult(
             response=intent_response,
             conversation_id=conversation_id,
