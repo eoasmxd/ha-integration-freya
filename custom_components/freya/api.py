@@ -329,10 +329,13 @@ class FreyaApiClient:
                             aiohttp.WSMsgType.ERROR,
                         ):
                             break
-            return False
+            raise FreyaApiClientCommunicationError(
+                "Connection closed before validation handshake completed"
+            )
         except (
             FreyaApiClientIncompatibleVersionError,
             FreyaApiClientAuthenticationError,
+            FreyaApiClientCommunicationError,
         ):
             raise
         except Exception as err:
