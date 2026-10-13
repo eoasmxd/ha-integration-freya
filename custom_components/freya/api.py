@@ -10,7 +10,10 @@ import logging
 from pathlib import Path
 from urllib.parse import quote
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .data import FreyaChatResponse
 
 import aiohttp
 from yarl import URL
@@ -19,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 CLIENT_ID_PREFIX = "homeassistant"
 CHANNEL_TYPE = "homeassistant"
+SUPPORTED_SERVER_MAJOR_VERSION = 1
 
 
 class FreyaApiClientError(Exception):
@@ -36,6 +40,12 @@ class FreyaApiClientCommunicationError(FreyaApiClientError):
 class FreyaApiClientAuthenticationError(FreyaApiClientError):
     """Exception raised when authentication fails.
     鉴权失败或密码错误时引发的异常。
+    """
+
+
+class FreyaApiClientIncompatibleVersionError(FreyaApiClientError):
+    """Exception raised when Freya server version is incompatible.
+    Freya 服务端大版本不兼容时引发的异常。
     """
 
 
@@ -76,7 +86,7 @@ class FreyaApiClient:
         self._listen_task: asyncio.Task | None = None
         self._closed = False
         self._connected_event = asyncio.Event()
-        self._pending_futures: dict[str, asyncio.Future[str]] = {}
+        self._pending_futures: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._pending_deltas: dict[str, list[str]] = {}
 
     @property
@@ -107,6 +117,18 @@ class FreyaApiClient:
             headers["Authorization"] = f"Bearer {self._token}"
         return headers
 
+    def _validate_server_version(self, version_str: Any) -> None:
+        """Validate server major version without fallback.
+        强校验服务端大版本，不匹配直接中断，不做任何回落处理。
+        """
+        if not isinstance(version_str, str) or not version_str.strip():
+            raise FreyaApiClientIncompatibleVersionError("Missing version from Freya server")
+        major = version_str.strip().lstrip("v").split(".")[0]
+        if not major.isdigit() or int(major) != SUPPORTED_SERVER_MAJOR_VERSION:
+            raise FreyaApiClientIncompatibleVersionError(
+                f"Incompatible Freya version '{version_str}', expected major version {SUPPORTED_SERVER_MAJOR_VERSION}"
+            )
+
     async def async_login(self) -> None:
         """Authenticate with Freya and acquire a session token.
         向 Freya 发起鉴权，换取会话 Token。如果服务端未开启鉴权，依然会返回一个可用 Token。
@@ -115,7 +137,7 @@ class FreyaApiClient:
         payload = {}
         if self._password:
             payload["password"] = self._password
-            
+
         try:
             async with self._session.post(login_url, json=payload) as resp:
                 data = await resp.json()
@@ -211,6 +233,10 @@ class FreyaApiClient:
                 LOGGER.debug("Freya authentication error in connection loop: %s", err)
                 self._token = None
                 await asyncio.sleep(5)
+            except FreyaApiClientIncompatibleVersionError as err:
+                LOGGER.error("Freya version incompatible: %s", err)
+                self._closed = True
+                break
             except aiohttp.WSServerHandshakeError as err:
                 if err.status in (401, 403):
                     LOGGER.debug("Freya WebSocket handshake rejected (401/403). Resetting token.")
@@ -246,6 +272,7 @@ class FreyaApiClient:
         data = payload.get("data") or {}
 
         if event in ("server:connected", "server:reconnected"):
+            self._validate_server_version(data.get("version"))
             self._connected_event.set()
             LOGGER.debug("Freya WebSocket handshake ready: %s", event)
             return
@@ -258,14 +285,16 @@ class FreyaApiClient:
 
         if event == "server:reply":
             if not future.done():
-                future.set_result(str(data.get("text", "")))
+                future.set_result(data)
         elif event == "server:delta":
             if text := data.get("text"):
                 self._pending_deltas.setdefault(session_id, []).append(text)
         elif event == "server:completed":
             if not future.done():
                 deltas = self._pending_deltas.get(session_id, [])
-                future.set_result("".join(deltas))
+                result_data = dict(data)
+                result_data["text"] = "".join(deltas)
+                future.set_result(result_data)
 
     async def async_validate_connection(self) -> bool:
         """Validate WebSocket connectivity with Freya.
@@ -288,6 +317,8 @@ class FreyaApiClient:
                             except json.JSONDecodeError:
                                 continue
                             if payload.get("event") in ("server:connected", "server:reconnected"):
+                                data = payload.get("data") or {}
+                                self._validate_server_version(data.get("version"))
                                 return True
                         elif msg.type in (
                             aiohttp.WSMsgType.CLOSE,
@@ -296,11 +327,13 @@ class FreyaApiClient:
                         ):
                             break
             return False
+        except FreyaApiClientIncompatibleVersionError:
+            raise
         except Exception as err:
             LOGGER.debug("Freya connection validation failed: %s", err)
             raise FreyaApiClientCommunicationError(err) from err
 
-    async def async_send_message(self, data: Any) -> str:
+    async def async_send_message(self, data: Any) -> FreyaChatResponse:
         """Send a message to Freya and await the final reply text.
         发送消息至 Freya 并等待最终回复文本。
         """
@@ -349,7 +382,13 @@ class FreyaApiClient:
             )
 
             async with asyncio.timeout(120):
-                return await future
+                reply_data = await future
+                from .data import FreyaChatResponse
+
+                return FreyaChatResponse(
+                    text=str(reply_data.get("text", "")),
+                    attachments=reply_data.get("attachments") or [],
+                )
 
         except (TimeoutError, asyncio.CancelledError) as err:
             if self._ws and not self._ws.closed:

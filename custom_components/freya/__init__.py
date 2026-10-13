@@ -158,8 +158,8 @@ async def async_setup_entry(
             if resolved:
                 payload["attachments"] = resolved
 
-        result = await entry.runtime_data.client.async_send_message(payload)
-        return {"response": result}
+        chat_response = await entry.runtime_data.client.async_send_message(payload)
+        return chat_response.to_service_response()
 
     if not hass.services.has_service(DOMAIN, SERVICE_CHAT):
         hass.services.async_register(

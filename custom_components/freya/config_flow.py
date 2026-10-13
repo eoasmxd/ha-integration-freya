@@ -18,6 +18,7 @@ from .api import (
     FreyaApiClient,
     FreyaApiClientAuthenticationError,
     FreyaApiClientCommunicationError,
+    FreyaApiClientIncompatibleVersionError,
 )
 from .const import CONF_IS_ADDON, CONF_PASSWORD, CONF_URL, DOMAIN, LOGGER
 
@@ -94,6 +95,8 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         client = FreyaApiClient(self._internal_url, async_get_clientsession(self.hass))
         try:
             await client.async_validate_connection()
+        except FreyaApiClientIncompatibleVersionError:
+            return self.async_abort(reason="incompatible_version")
         except FreyaApiClientCommunicationError:
             return self.async_abort(reason="cannot_connect")
 
@@ -175,6 +178,8 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         client = FreyaApiClient(internal_url, async_get_clientsession(self.hass))
         try:
             await client.async_validate_connection()
+        except FreyaApiClientIncompatibleVersionError:
+            return self.async_abort(reason="incompatible_version")
         except FreyaApiClientCommunicationError:
             return await self.async_step_cannot_connect()
 
@@ -248,6 +253,8 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             except FreyaApiClientAuthenticationError:
                 errors["base"] = "invalid_auth"
+            except FreyaApiClientIncompatibleVersionError:
+                errors["base"] = "incompatible_version"
             except FreyaApiClientCommunicationError:
                 errors["base"] = "cannot_connect"
             except Exception:

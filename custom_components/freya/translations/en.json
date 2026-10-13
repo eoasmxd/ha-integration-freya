@@ -38,12 +38,14 @@
         "error": {
             "cannot_connect": "Failed to connect to the specified Freya service. Please check the URL.",
             "invalid_auth": "Invalid access credentials or wrong password.",
+            "incompatible_version": "Incompatible Freya server major version. Please ensure server and integration versions match.",
             "unknown": "An unknown error occurred. Please check logs."
         },
         "abort": {
             "already_configured": "Freya is already configured. Only one instance is needed.",
             "already_in_progress": "Configuration flow is already in progress. Please continue in the existing card or dialog.",
             "cannot_connect": "Unable to connect to Freya app communication service. Please ensure the app is running.",
+            "incompatible_version": "Incompatible Freya server major version. Cannot establish connection.",
             "unsupported_ha_version": "Freya requires Home Assistant 2026.2.0 or higher to support the new App architecture. Please update your Home Assistant.",
             "reconfigure_successful": "Freya connection configuration has been successfully updated."
         }
@@ -77,6 +79,16 @@
                 "language": {
                     "name": "Language",
                     "description": "Expected language code for the response (optional, defaults to system language)."
+                }
+            },
+            "response": {
+                "text": {
+                    "name": "Reply text",
+                    "description": "Text response returned from Freya."
+                },
+                "attachments": {
+                    "name": "Attachments",
+                    "description": "Media attachments or files returned from Freya (if any)."
                 }
             }
         }
