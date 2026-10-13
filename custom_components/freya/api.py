@@ -330,7 +330,10 @@ class FreyaApiClient:
                         ):
                             break
             return False
-        except FreyaApiClientIncompatibleVersionError:
+        except (
+            FreyaApiClientIncompatibleVersionError,
+            FreyaApiClientAuthenticationError,
+        ):
             raise
         except Exception as err:
             LOGGER.debug("Freya connection validation failed: %s", err)
@@ -346,6 +349,11 @@ class FreyaApiClient:
             await self.async_connect()
 
         if not self._connected_event.is_set():
+            if self._incompatible_error:
+                raise FreyaApiClientIncompatibleVersionError(self._incompatible_error)
+            if self._listen_task and self._listen_task.done():
+                raise FreyaApiClientCommunicationError("Freya service is not connected")
+
             wait_task = asyncio.create_task(self._connected_event.wait())
             tasks = {wait_task}
             if self._listen_task and not self._listen_task.done():
