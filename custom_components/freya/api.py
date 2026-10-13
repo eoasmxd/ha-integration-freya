@@ -187,8 +187,6 @@ class FreyaApiClient:
         """Start the background WebSocket maintenance task.
         启动常驻 WebSocket 连接后台维护任务。
         """
-        if self._incompatible_error:
-            return
         if self._listen_task is None or self._listen_task.done():
             self._closed = False
             self._listen_task = asyncio.create_task(self._connection_loop())
@@ -345,8 +343,7 @@ class FreyaApiClient:
         if self._ws is None or self._ws.closed:
             self._closed = False
             self._incompatible_error = None
-
-        await self.async_connect()
+            await self.async_connect()
 
         if not self._connected_event.is_set():
             wait_task = asyncio.create_task(self._connected_event.wait())
