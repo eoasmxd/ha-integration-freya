@@ -47,7 +47,7 @@ async def _async_find_freya_addon(hass: HomeAssistant) -> dict[str, Any] | None:
             if not isinstance(app, dict):
                 continue
             slug = app.get("slug", "")
-            if slug == "freya" or slug.endswith("_freya"):
+            if slug in ("freya", "freya_edge") or slug.endswith(("_freya", "_freya_edge")):
                 state = str(app.get("state", "unknown")).lower()
                 return {
                     "slug": slug,
