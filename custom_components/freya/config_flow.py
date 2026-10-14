@@ -42,20 +42,34 @@ async def _async_find_freya_addon(hass: HomeAssistant) -> dict[str, Any] | None:
         except ImportError:
             from homeassistant.components.hassio import get_addons_list as get_apps_list
 
+        candidates = []
         addons = get_apps_list(hass) or []
         for app in addons:
             if not isinstance(app, dict):
                 continue
             slug = app.get("slug", "")
-            if slug in ("freya", "freya_edge") or slug.endswith(("_freya", "_freya_edge")):
+            is_stable = slug == "freya" or slug.endswith("_freya")
+            is_edge = slug == "freya_edge" or slug.endswith("_freya_edge")
+            if is_stable or is_edge:
                 state = str(app.get("state", "unknown")).lower()
-                return {
-                    "slug": slug,
-                    "name": app.get("name", "Freya"),
-                    "state": state,
-                    "version": app.get("version"),
-                    "hostname": slug.replace("_", "-"),
-                }
+                candidates.append(
+                    {
+                        "info": {
+                            "slug": slug,
+                            "name": app.get("name", "Freya"),
+                            "state": state,
+                            "version": app.get("version"),
+                            "hostname": slug.replace("_", "-"),
+                        },
+                        "is_started": state == "started",
+                        "is_stable": is_stable,
+                    }
+                )
+
+        if candidates:
+            candidates.sort(key=lambda x: (x["is_started"], x["is_stable"]), reverse=True)
+            return candidates[0]["info"]
+
     except Exception as err:
         LOGGER.error("Failed to get installed app information: %s", err)
 
