@@ -14,6 +14,7 @@ from homeassistant.components.conversation import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import intent
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import ulid
 
@@ -37,8 +38,8 @@ class FreyaConversationEntity(ConversationEntity):
     Freya 对话代理实体。
     """
 
-    _attr_has_entity_name = False
-    _attr_name = "Freya"
+    _attr_has_entity_name = True
+    _attr_name = None
     _attr_suggested_object_id = DOMAIN
     _attr_supported_features = ConversationEntityFeature.CONTROL
 
@@ -48,6 +49,13 @@ class FreyaConversationEntity(ConversationEntity):
         """
         self.entry = entry
         self._attr_unique_id = DOMAIN
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=entry.title or "Freya",
+            manufacturer="Freya",
+            model="Freya AI Agent",
+            entry_type=DeviceEntryType.SERVICE,
+        )
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
