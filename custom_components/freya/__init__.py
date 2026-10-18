@@ -12,10 +12,12 @@ import time
 from typing import Any
 import uuid
 import voluptuous as vol
+from aiohttp import web
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
@@ -29,7 +31,9 @@ from .const import (
     CONF_PASSWORD,
     CONF_URL,
     DOMAIN,
+    ISSUE_RESTART_REQUIRED,
     LOGGER,
+    NOTIFICATION_ID_UPDATE,
     SERVICE_CHAT,
 )
 from .data import FreyaConfigEntry, FreyaData
@@ -140,6 +144,14 @@ async def async_setup_entry(
 
     await client.async_connect()
 
+    ir.async_delete_issue(hass, DOMAIN, ISSUE_RESTART_REQUIRED)
+    await hass.services.async_call(
+        "persistent_notification",
+        "dismiss",
+        {"notification_id": NOTIFICATION_ID_UPDATE},
+        blocking=False,
+    )
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def async_handle_chat(call: ServiceCall) -> ServiceResponse:
@@ -190,7 +202,45 @@ async def async_setup_entry(
             supports_response=SupportsResponse.OPTIONAL,
         )
 
+    if "http_view_registered" not in hass.data.setdefault(DOMAIN, {}):
+        hass.http.register_view(FreyaNotifyUpdateView)
+        hass.data[DOMAIN]["http_view_registered"] = True
+
     return True
+
+
+class FreyaNotifyUpdateView(HomeAssistantView):
+    """Handle internal update notifications from Freya Addon/Deployer.
+    处理来自部署器的内部集成更新通知。
+    """
+
+    url = "/api/freya/notify_update"
+    name = "api:freya:notify_update"
+    requires_auth = True
+
+    async def post(self, request: web.Request) -> web.Response:
+        """Handle POST request to create update repair issue."""
+        hass: HomeAssistant = request.app["hass"]
+        data: dict[str, Any] = await request.json() if request.can_read_body else {}
+        version = data.get("version", "")
+        if not version:
+            loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
+            if loaded_entries:
+                entry = loaded_entries[0]
+                version = entry.runtime_data.integration.manifest.get("version", "")
+
+        ir.async_create_issue(
+            hass,
+            domain=DOMAIN,
+            issue_id=ISSUE_RESTART_REQUIRED,
+            is_fixable=True,
+            issue_domain=DOMAIN,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="restart_required",
+            translation_placeholders={"version": version or "latest"},
+        )
+        LOGGER.info("Created restart required issue via HTTP endpoint for Freya version %s", version)
+        return self.json({"success": True})
 
 
 async def async_unload_entry(
@@ -204,6 +254,7 @@ async def async_unload_entry(
     if unload_ok:
         await entry.runtime_data.client.async_close()
         loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
-        if len(loaded_entries) <= 1 and hass.services.has_service(DOMAIN, SERVICE_CHAT):
-            hass.services.async_remove(DOMAIN, SERVICE_CHAT)
+        if len(loaded_entries) <= 1:
+            if hass.services.has_service(DOMAIN, SERVICE_CHAT):
+                hass.services.async_remove(DOMAIN, SERVICE_CHAT)
     return unload_ok

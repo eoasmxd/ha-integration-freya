@@ -82,5 +82,21 @@
                 }
             }
         }
+    },
+    "issues": {
+        "restart_required": {
+            "title": "Freya Integration Update Pending (v{version})",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "Restart Home Assistant",
+                        "description": "Freya integration has been automatically updated to v{version}.\n\nA restart of Home Assistant is required to apply the updates.\n\nClick **Submit** below to restart the system immediately."
+                    }
+                },
+                "abort": {
+                    "restart_in_progress": "Restart command sent successfully.\n\nHome Assistant is restarting to apply the Freya integration updates. Please refresh the page in a moment."
+                }
+            }
+        }
     }
 }

@@ -82,5 +82,21 @@
                 }
             }
         }
+    },
+    "issues": {
+        "restart_required": {
+            "title": "Freya 集成更新待生效 (v{version})",
+            "fix_flow": {
+                "step": {
+                    "confirm": {
+                        "title": "重启 Home Assistant",
+                        "description": "Freya 集成组件已自动更新至 v{version}。\n\n为使新版本生效，需要重启 Home Assistant。\n\n点击下方 **提交** 按钮将立即重启系统。"
+                    }
+                },
+                "abort": {
+                    "restart_in_progress": "已成功向系统发送重启指令。\n\nHome Assistant 正在重启以激活 Freya 更新，请稍候刷新页面。"
+                }
+            }
+        }
     }
 }
