@@ -79,6 +79,10 @@
                 "language": {
                     "name": "Language",
                     "description": "Expected language code for the response (optional, defaults to system language)."
+                },
+                "plain_text_output": {
+                    "name": "Plain Text Output",
+                    "description": "Whether to clean markdown and control characters to plain text (suitable for TTS)."
                 }
             }
         }

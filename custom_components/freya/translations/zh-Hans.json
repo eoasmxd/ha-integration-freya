@@ -79,6 +79,10 @@
                 "language": {
                     "name": "语言",
                     "description": "期望回复的语言代码（可选，如 zh、en，默认跟随系统语言）。"
+                },
+                "plain_text_output": {
+                    "name": "纯文本输出",
+                    "description": "是否清洗 Markdown 与格式控制符为纯文本（适合 TTS 语音播报）。"
                 }
             }
         }

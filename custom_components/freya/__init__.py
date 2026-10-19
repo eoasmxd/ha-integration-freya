@@ -37,6 +37,7 @@ from .const import (
     SERVICE_CHAT,
 )
 from .data import FreyaConfigEntry, FreyaData
+from .util import clean_plain_text
 
 PLATFORMS: list[Platform] = [
     Platform.CONVERSATION,
@@ -182,7 +183,10 @@ async def async_setup_entry(
                 payload["attachments"] = resolved
 
         chat_response = await entry.runtime_data.client.async_send_message(payload)
-        return chat_response.to_service_response()
+        response_data = chat_response.to_service_response()
+        if call.data.get("plain_text_output", False):
+            response_data["text"] = clean_plain_text(response_data["text"])
+        return response_data
 
     if not hass.services.has_service(DOMAIN, SERVICE_CHAT):
         hass.services.async_register(
@@ -197,6 +201,7 @@ async def async_setup_entry(
                     vol.Optional("toolboxes"): vol.Any(cv.string, [cv.string]),
                     vol.Optional("skill_id"): cv.string,
                     vol.Optional("language"): cv.string,
+                    vol.Optional("plain_text_output", default=False): cv.boolean,
                 }
             ),
             supports_response=SupportsResponse.OPTIONAL,

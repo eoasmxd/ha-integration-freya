@@ -49,3 +49,11 @@ chat:
       example: "zh"
       selector:
         text:
+
+    plain_text_output:
+      name: Plain Text Output
+      description: Whether to clean markdown and control characters to plain text (suitable for TTS).
+      required: false
+      default: false
+      selector:
+        boolean:
