@@ -16,5 +16,6 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/eoasmxd/ha-integration-freya/issues",
-  "version": "1.0.2"
+  "version": "1.0.2",
+  "version_edge": "1.0.2-edge.6"
 }
