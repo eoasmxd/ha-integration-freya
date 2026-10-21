@@ -33,6 +33,13 @@
             "hassio_confirm": {
                 "title": "Freya App Discovered",
                 "description": "A running Freya app has been detected. Do you want to set it up now?"
+            },
+            "reauth_confirm": {
+                "title": "Reauthenticate Freya",
+                "description": "The credentials for {url} have expired or changed. Please enter the new password to resume connection.",
+                "data": {
+                    "password": "Password/Token"
+                }
             }
         },
         "error": {
@@ -47,7 +54,8 @@
             "cannot_connect": "Unable to connect to Freya app communication service. Please ensure the app is running.",
             "incompatible_version": "Incompatible Freya server major version. Cannot establish connection.",
             "unsupported_ha_version": "Freya requires Home Assistant 2026.2.0 or higher to support the new App architecture. Please update your Home Assistant.",
-            "reconfigure_successful": "Freya connection configuration has been successfully updated."
+            "reconfigure_successful": "Freya connection configuration has been successfully updated.",
+            "reauth_successful": "Freya credentials have been successfully updated."
         }
     },
     "services": {
@@ -101,6 +109,32 @@
                     "restart_in_progress": "Restart command sent successfully.\n\nHome Assistant is restarting to apply the Freya integration updates. Please refresh the page in a moment."
                 }
             }
+        }
+    },
+    "exceptions": {
+        "service_not_connected": {
+            "message": "Freya service is not connected. Please ensure the app or service is running."
+        },
+        "auth_failed": {
+            "message": "Invalid Freya credentials or wrong password. Please reconfigure Freya."
+        },
+        "incompatible_version": {
+            "message": "Incompatible Freya server major version. Please ensure server and integration versions match."
+        },
+        "attachment_not_found": {
+            "message": "Attachment file not found: {path}"
+        },
+        "attachment_not_allowed": {
+            "message": "Attachment file path is not allowed: {path}"
+        },
+        "attachment_upload_failed": {
+            "message": "Failed to upload attachment file ({path}). Please check network communication and server status."
+        },
+        "timeout": {
+            "message": "Timed out waiting for response from Freya service. Please check server load and network connection."
+        },
+        "communication_error": {
+            "message": "Unable to communicate with Freya service. Please ensure network connection is normal."
         }
     }
 }

@@ -4,6 +4,7 @@ Freya 配置流向导。
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from awesomeversion import AwesomeVersion
@@ -161,6 +162,61 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         处理重新配置流程。
         """
         return await self._async_handle_addon_connection()
+
+    async def async_step_reauth(
+        self,
+        entry_data: Mapping[str, Any],
+    ) -> config_entries.ConfigFlowResult:
+        """Handle initiation of re-authentication.
+        处理重新认证流程的触发。
+        """
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Handle confirmation of re-authentication.
+        处理重新认证密码确认。
+        """
+        errors: dict[str, str] = {}
+        reauth_entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            password = user_input.get(CONF_PASSWORD, "")
+            client = FreyaApiClient(
+                reauth_entry.data[CONF_URL],
+                async_get_clientsession(self.hass),
+                password,
+            )
+            try:
+                await client.async_validate_connection()
+                return self.async_update_reload_and_abort(
+                    reauth_entry,
+                    data={
+                        **reauth_entry.data,
+                        CONF_PASSWORD: password,
+                    },
+                )
+            except FreyaApiClientAuthenticationError:
+                errors["base"] = "invalid_auth"
+            except FreyaApiClientIncompatibleVersionError:
+                errors["base"] = "incompatible_version"
+            except FreyaApiClientCommunicationError:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                errors["base"] = "unknown"
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_PASSWORD, default=reauth_entry.data.get(CONF_PASSWORD) or ""): str,
+                }
+            ),
+            description_placeholders={"url": reauth_entry.data.get(CONF_URL, "")},
+            errors=errors,
+        )
 
     async def _async_handle_addon_connection(
         self,

@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
 from urllib.parse import quote
 import uuid
@@ -59,6 +60,7 @@ class FreyaApiClient:
         url: str,
         session: aiohttp.ClientSession,
         password: str | None = None,
+        on_auth_failed: Callable[[], None] | None = None,
     ) -> None:
         """Initialize the client and parse base URLs.
         初始化客户端并解析基础通信地址。
@@ -81,11 +83,12 @@ class FreyaApiClient:
         self._password = password
         self._token: str | None = None
         self._client_id = f"{CLIENT_ID_PREFIX}:{uuid.uuid4().hex[:8]}"
+        self._on_auth_failed = on_auth_failed
 
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._listen_task: asyncio.Task | None = None
         self._closed = False
-        self._incompatible_error: str | None = None
+        self._fatal_error: FreyaApiClientError | None = None
         self._connected_event = asyncio.Event()
         self._pending_futures: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self._pending_deltas: dict[str, list[str]] = {}
@@ -195,6 +198,8 @@ class FreyaApiClient:
         """Maintain persistent WebSocket connection with auto-reconnect.
         后台维持 WebSocket 长连接并在断开时自动重连。
         """
+        backoff = 2
+        max_backoff = 60
         while not self._closed:
             try:
                 if self._password and not self._token:
@@ -216,6 +221,7 @@ class FreyaApiClient:
                             },
                         }
                     )
+                    backoff = 2
 
                     async for msg in ws:
                         if msg.type in (
@@ -231,18 +237,34 @@ class FreyaApiClient:
                         self._handle_incoming_message(msg.data)
 
             except FreyaApiClientAuthenticationError as err:
-                LOGGER.debug("Freya authentication error in connection loop: %s", err)
+                LOGGER.error("Freya authentication failed: %s", err)
                 self._token = None
-                await asyncio.sleep(5)
+                self._fatal_error = err
+                self._closed = True
+                if self._on_auth_failed:
+                    self._on_auth_failed()
+                break
             except FreyaApiClientIncompatibleVersionError as err:
                 LOGGER.error("Freya version incompatible: %s", err)
-                self._incompatible_error = str(err)
+                self._fatal_error = err
                 self._closed = True
                 break
             except aiohttp.WSServerHandshakeError as err:
                 if err.status in (401, 403):
-                    LOGGER.debug("Freya WebSocket handshake rejected (401/403). Resetting token.")
-                    self._token = None
+                    if self._token:
+                        LOGGER.debug("Freya WebSocket handshake rejected (401/403). Resetting token.")
+                        self._token = None
+                    else:
+                        LOGGER.error("Freya WebSocket handshake rejected with auth error (%s)", err.status)
+                        self._fatal_error = FreyaApiClientAuthenticationError(
+                            f"Freya WebSocket handshake rejected ({err.status})"
+                        )
+                        self._closed = True
+                        if self._on_auth_failed:
+                            self._on_auth_failed()
+                        break
+                else:
+                    LOGGER.debug("Freya WebSocket handshake error: %s", err)
             except asyncio.CancelledError:
                 break
             except Exception as err:
@@ -259,7 +281,8 @@ class FreyaApiClient:
                 self._pending_deltas.clear()
 
             if not self._closed:
-                await asyncio.sleep(3)
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, max_backoff)
 
     def _handle_incoming_message(self, data_str: str) -> None:
         """Parse incoming server messages and dispatch results.
@@ -321,7 +344,7 @@ class FreyaApiClient:
                             if payload.get("event") in ("server:connected", "server:reconnected"):
                                 data = payload.get("data") or {}
                                 self._validate_server_version(data.get("version"))
-                                self._incompatible_error = None
+                                self._fatal_error = None
                                 return True
                         elif msg.type in (
                             aiohttp.WSMsgType.CLOSE,
@@ -332,6 +355,12 @@ class FreyaApiClient:
             raise FreyaApiClientCommunicationError(
                 "Connection closed before validation handshake completed"
             )
+        except aiohttp.WSServerHandshakeError as err:
+            if err.status in (401, 403):
+                raise FreyaApiClientAuthenticationError(
+                    f"Freya WebSocket handshake rejected ({err.status})"
+                ) from err
+            raise FreyaApiClientCommunicationError(err) from err
         except (
             FreyaApiClientIncompatibleVersionError,
             FreyaApiClientAuthenticationError,
@@ -348,12 +377,12 @@ class FreyaApiClient:
         """
         if self._ws is None or self._ws.closed:
             self._closed = False
-            self._incompatible_error = None
+            self._fatal_error = None
             await self.async_connect()
 
         if not self._connected_event.is_set():
-            if self._incompatible_error:
-                raise FreyaApiClientIncompatibleVersionError(self._incompatible_error)
+            if self._fatal_error:
+                raise self._fatal_error
             if self._listen_task and self._listen_task.done():
                 raise FreyaApiClientCommunicationError("Freya service is not connected")
 
@@ -372,8 +401,8 @@ class FreyaApiClient:
                 if not wait_task.done():
                     wait_task.cancel()
 
-            if self._incompatible_error:
-                raise FreyaApiClientIncompatibleVersionError(self._incompatible_error)
+            if self._fatal_error:
+                raise self._fatal_error
 
             if not self._connected_event.is_set():
                 if not done:
