@@ -16,14 +16,16 @@ from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, HomeAssistantError
 from homeassistant.helpers import config_validation as cv, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
 from .api import (
     FreyaApiClient,
+    FreyaApiClientAuthenticationError,
     FreyaApiClientCommunicationError,
+    FreyaApiClientError,
     FreyaApiClientIncompatibleVersionError,
 )
 from .const import (
@@ -75,7 +77,7 @@ async def _async_resolve_attachments(
     resolved: list[dict[str, str]] = []
     is_addon = _is_addon_deployment(entry)
     workspace_dir = Path(hass.config.path("freya", "workspace"))
-    resolved_workspace = workspace_dir.resolve()
+    resolved_workspace = await asyncio.to_thread(workspace_dir.resolve)
     client = entry.runtime_data.client
 
     for item in items:
@@ -88,22 +90,46 @@ async def _async_resolve_attachments(
         item_path = item
 
         if is_addon and not os.path.isabs(item_path):
-            ws_candidate = (workspace_dir / item_path).resolve()
+            ws_candidate = await asyncio.to_thread((workspace_dir / item_path).resolve)
             if ws_candidate.is_relative_to(resolved_workspace) and await asyncio.to_thread(ws_candidate.is_file):
                 resolved.append({"path": str(ws_candidate.relative_to(resolved_workspace)).replace("\\", "/")})
                 continue
 
         local_path = Path(item_path if os.path.isabs(item_path) else hass.config.path(item_path))
-        if not await asyncio.to_thread(local_path.is_file):
-            LOGGER.warning("Attachment file does not exist: %s", item_path)
-            raise HomeAssistantError(f"Attachment file not found: {item_path}")
 
         if is_addon:
-            resolved_local = local_path.resolve()
+            resolved_local = await asyncio.to_thread(local_path.resolve)
             if resolved_local.is_relative_to(resolved_workspace):
+                if not await asyncio.to_thread(resolved_local.is_file):
+                    LOGGER.warning("Attachment file does not exist: %s", item_path)
+                    raise HomeAssistantError(
+                        f"Attachment file not found: {item_path}",
+                        translation_domain=DOMAIN,
+                        translation_key="attachment_not_found",
+                        translation_placeholders={"path": item_path},
+                    )
                 resolved.append({"path": str(resolved_local.relative_to(resolved_workspace)).replace("\\", "/")})
                 continue
 
+        if not await hass.async_add_executor_job(hass.config.is_allowed_path, str(local_path)):
+            LOGGER.warning("Attachment file path is not allowed: %s", item_path)
+            raise HomeAssistantError(
+                f"Attachment file path is not allowed: {item_path}",
+                translation_domain=DOMAIN,
+                translation_key="attachment_not_allowed",
+                translation_placeholders={"path": item_path},
+            )
+
+        if not await asyncio.to_thread(local_path.is_file):
+            LOGGER.warning("Attachment file does not exist: %s", item_path)
+            raise HomeAssistantError(
+                f"Attachment file not found: {item_path}",
+                translation_domain=DOMAIN,
+                translation_key="attachment_not_found",
+                translation_placeholders={"path": item_path},
+            )
+
+        if is_addon:
             safe_name = f"{int(time.time() * 1000)}-{uuid.uuid4().hex[:6]}-{local_path.name}"
             target_cache_dir = workspace_dir / "cache" / "ha"
             await asyncio.to_thread(target_cache_dir.mkdir, parents=True, exist_ok=True)
@@ -111,7 +137,15 @@ async def _async_resolve_attachments(
             await asyncio.to_thread(shutil.copy2, str(local_path), str(target_file))
             resolved.append({"path": f"cache/ha/{safe_name}"})
         else:
-            upload_res = await client.async_upload_file(str(local_path))
+            try:
+                upload_res = await client.async_upload_file(str(local_path))
+            except FreyaApiClientError as err:
+                raise HomeAssistantError(
+                    f"Failed to upload attachment {item_path}: {err}",
+                    translation_domain=DOMAIN,
+                    translation_key="attachment_upload_failed",
+                    translation_placeholders={"path": item_path},
+                ) from err
             if remote_path := upload_res.get("path"):
                 resolved.append({"path": remote_path})
 
@@ -129,6 +163,7 @@ async def async_setup_entry(
         url=entry.data[CONF_URL],
         session=async_get_clientsession(hass),
         password=entry.data.get(CONF_PASSWORD),
+        on_auth_failed=lambda: entry.async_start_reauth(hass),
     )
 
     entry.runtime_data = FreyaData(
@@ -138,6 +173,8 @@ async def async_setup_entry(
 
     try:
         await client.async_validate_connection()
+    except FreyaApiClientAuthenticationError as err:
+        raise ConfigEntryAuthFailed(f"Freya authentication failed: {err}") from err
     except FreyaApiClientIncompatibleVersionError as err:
         raise ConfigEntryError(f"Freya server version incompatible: {err}") from err
     except FreyaApiClientCommunicationError:
@@ -182,7 +219,40 @@ async def async_setup_entry(
             if resolved:
                 payload["attachments"] = resolved
 
-        chat_response = await entry.runtime_data.client.async_send_message(payload)
+        try:
+            chat_response = await entry.runtime_data.client.async_send_message(payload)
+        except FreyaApiClientAuthenticationError as err:
+            raise HomeAssistantError(
+                str(err),
+                translation_domain=DOMAIN,
+                translation_key="auth_failed",
+            ) from err
+        except FreyaApiClientIncompatibleVersionError as err:
+            raise HomeAssistantError(
+                str(err),
+                translation_domain=DOMAIN,
+                translation_key="incompatible_version",
+            ) from err
+        except FreyaApiClientCommunicationError as err:
+            if "not connected" in str(err).lower():
+                raise HomeAssistantError(
+                    str(err),
+                    translation_domain=DOMAIN,
+                    translation_key="service_not_connected",
+                ) from err
+            if "timed out" in str(err).lower():
+                raise HomeAssistantError(
+                    str(err),
+                    translation_domain=DOMAIN,
+                    translation_key="timeout",
+                ) from err
+            raise HomeAssistantError(
+                str(err),
+                translation_domain=DOMAIN,
+                translation_key="communication_error",
+            ) from err
+        except FreyaApiClientError as err:
+            raise HomeAssistantError(str(err)) from err
         response_data = chat_response.to_service_response()
         if call.data.get("plain_text_output", False):
             response_data["text"] = clean_plain_text(response_data["text"])
