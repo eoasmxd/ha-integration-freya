@@ -20,8 +20,6 @@ from homeassistant.util import ulid
 
 from .const import DOMAIN, LOGGER
 from .data import FreyaConfigEntry
-from .util import clean_plain_text
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -84,10 +82,7 @@ class FreyaConversationEntity(ConversationEntity):
             }
 
             chat_res = await client.async_send_message(payload)
-            response_text = chat_res.text
-            if user_input.device_id or user_input.satellite_id:
-                response_text = clean_plain_text(response_text)
-            intent_response.async_set_speech(response_text)
+            intent_response.async_set_speech(chat_res.text)
             if chat_res.attachments:
                 intent_response.data["attachments"] = chat_res.attachments
 
