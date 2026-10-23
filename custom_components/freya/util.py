@@ -60,6 +60,16 @@ _CLEAN_RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(?<![a-zA-Z0-9_])_(?!\s)([^_\r\n]+?)(?<!\s)_(?![a-zA-Z0-9_])"), r"\1"),
     (re.compile(r"(?<![a-zA-Z0-9_])_{2}(?!\s)([^_\r\n]+?)(?<!\s)_{2}(?![a-zA-Z0-9_])"), r"\1"),
     (re.compile(r"~~(?!\s)([^~\r\n]+?)(?<!\s)~~"), r"\1"),
+
+    # 9. Strip modern SMP Emoji characters.
+    # 移除 SMP 区现代 Emoji 表情。
+    (
+        re.compile(
+            r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
+            r"\U0001F900-\U0001FAFF\U0001F1E6-\U0001F1FF\uFE0F]+"
+        ),
+        "",
+    ),
 ]
 
 _TRAILING_SPACE_RE = re.compile(r"[ \t]+\r?\n")
@@ -77,11 +87,11 @@ def clean_plain_text(text: str) -> str:
     for pattern, repl in _CLEAN_RULES:
         cleaned = pattern.sub(repl, cleaned)
 
-    # 9. Decode HTML entities to prevent TTS from spelling out escape characters.
+    # 10. Decode HTML entities to prevent TTS from spelling out escape characters.
     # 还原 HTML 实体，防止 TTS 朗读转义符。
     cleaned = html.unescape(cleaned)
 
-    # 10. Compress redundant line breaks and trailing spaces.
+    # 11. Compress redundant line breaks and trailing spaces.
     # 压缩多余连续换行与行尾多余空格。
     cleaned = _TRAILING_SPACE_RE.sub("\n", cleaned)
     cleaned = _MULTI_NEWLINE_RE.sub("\n\n", cleaned)
