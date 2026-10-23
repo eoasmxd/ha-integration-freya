@@ -29,10 +29,14 @@ from .api import (
     FreyaApiClientIncompatibleVersionError,
 )
 from .const import (
+    CONF_ENTRY_TYPE,
     CONF_IS_ADDON,
     CONF_PASSWORD,
+    CONF_PENDING_TTS_PROXY,
     CONF_URL,
     DOMAIN,
+    ENTRY_TYPE_SERVICE,
+    ENTRY_TYPE_TTS_PROXY,
     ISSUE_RESTART_REQUIRED,
     LOGGER,
     NOTIFICATION_ID_UPDATE,
@@ -43,6 +47,10 @@ from .util import clean_plain_text
 
 PLATFORMS: list[Platform] = [
     Platform.CONVERSATION,
+]
+
+TTS_PLATFORMS: list[Platform] = [
+    Platform.TTS,
 ]
 
 
@@ -159,6 +167,11 @@ async def async_setup_entry(
     """Set up Freya from a config entry.
     初始化 Freya 配置条目。
     """
+    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_SERVICE)
+    if entry_type == ENTRY_TYPE_TTS_PROXY:
+        await hass.config_entries.async_forward_entry_setups(entry, TTS_PLATFORMS)
+        return True
+
     client = FreyaApiClient(
         url=entry.data[CONF_URL],
         session=async_get_clientsession(hass),
@@ -281,6 +294,16 @@ async def async_setup_entry(
         hass.http.register_view(FreyaNotifyUpdateView)
         hass.data[DOMAIN]["http_view_registered"] = True
 
+    if pending_proxy := entry.data.get(CONF_PENDING_TTS_PROXY):
+        new_data = {k: v for k, v in entry.data.items() if k != CONF_PENDING_TTS_PROXY}
+        hass.config_entries.async_update_entry(entry, data=new_data)
+        hass.async_create_task(
+            hass.config_entries.flow.async_init(
+                DOMAIN,
+                context={"source": "tts_init"},
+                data=pending_proxy,
+            )
+        )
     return True
 
 
@@ -300,9 +323,17 @@ class FreyaNotifyUpdateView(HomeAssistantView):
         version = data.get("version", "")
         if not version:
             loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
-            if loaded_entries:
-                entry = loaded_entries[0]
-                version = entry.runtime_data.integration.manifest.get("version", "")
+            service_entry = next(
+                (e for e in loaded_entries if getattr(e, "runtime_data", None)), None
+            )
+            if service_entry:
+                version = service_entry.runtime_data.integration.manifest.get("version", "")
+            else:
+                try:
+                    integration = async_get_loaded_integration(hass, DOMAIN)
+                    version = integration.manifest.get("version", "")
+                except Exception:
+                    version = ""
 
         ir.async_create_issue(
             hass,
@@ -325,11 +356,19 @@ async def async_unload_entry(
     """Unload a Freya config entry.
     卸载 Freya 配置条目。
     """
+    entry_type = entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_SERVICE)
+    if entry_type == ENTRY_TYPE_TTS_PROXY:
+        return await hass.config_entries.async_unload_platforms(entry, TTS_PLATFORMS)
+
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         await entry.runtime_data.client.async_close()
-        loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
-        if len(loaded_entries) <= 1:
+        service_entries = [
+            e
+            for e in hass.config_entries.async_loaded_entries(DOMAIN)
+            if e.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_SERVICE) == ENTRY_TYPE_SERVICE
+        ]
+        if len(service_entries) <= 1:
             if hass.services.has_service(DOMAIN, SERVICE_CHAT):
                 hass.services.async_remove(DOMAIN, SERVICE_CHAT)
     return unload_ok

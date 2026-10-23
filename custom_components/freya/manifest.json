@@ -2,7 +2,8 @@
   "domain": "freya",
   "name": "Freya AI Agent",
   "after_dependencies": [
-    "hassio"
+    "hassio",
+    "tts"
   ],
   "codeowners": [
     "@eoasmxd"
@@ -16,5 +17,5 @@
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/eoasmxd/ha-integration-freya/issues",
-  "version": "1.0.3"
+  "version": "1.0.4-edge.1"
 }
