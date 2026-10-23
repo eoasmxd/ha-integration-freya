@@ -40,6 +40,30 @@
                 "data": {
                     "password": "Password/Token"
                 }
+            },
+            "tts_proxy_optional": {
+                "title": "Configure Freya AI TTS (Optional)",
+                "description": "Select an underlying TTS entity to optimize AI-generated text for speech synthesis. Leave empty to skip.",
+                "data": {
+                    "tts_proxy_target": "Underlying TTS Entity (Leave empty to skip)",
+                    "tts_proxy_name": "Entity Name (Optional)"
+                }
+            },
+            "tts_proxy_add": {
+                "title": "Add Freya AI TTS",
+                "description": "Select an underlying TTS entity to optimize AI-generated text for speech synthesis.",
+                "data": {
+                    "tts_proxy_target": "Underlying TTS Entity",
+                    "tts_proxy_name": "Entity Name (Optional)"
+                }
+            },
+            "tts_proxy_reconfigure": {
+                "title": "Configure Freya AI TTS",
+                "description": "Adjust the underlying TTS entity or entity name.",
+                "data": {
+                    "tts_proxy_target": "Underlying TTS Entity",
+                    "tts_proxy_name": "Entity Name (Leave empty to keep current name)"
+                }
             }
         },
         "error": {
@@ -54,6 +78,8 @@
             "cannot_connect": "Unable to connect to Freya app communication service. Please ensure the app is running.",
             "incompatible_version": "Incompatible Freya server major version. Cannot establish connection.",
             "unsupported_ha_version": "Freya requires Home Assistant 2026.2.0 or higher to support the new App architecture. Please update your Home Assistant.",
+            "no_tts_available": "No available TTS engines found in Home Assistant. Please install and configure TTS before adding Freya AI TTS.",
+            "all_tts_configured": "All detected TTS engines already have Freya AI TTS configured.",
             "reconfigure_successful": "Freya connection configuration has been successfully updated.",
             "reauth_successful": "Freya credentials have been successfully updated."
         }

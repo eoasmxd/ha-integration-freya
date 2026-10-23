@@ -11,7 +11,7 @@ from awesomeversion import AwesomeVersion
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import __version__ as HA_VERSION
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
@@ -21,7 +21,20 @@ from .api import (
     FreyaApiClientCommunicationError,
     FreyaApiClientIncompatibleVersionError,
 )
-from .const import CONF_IS_ADDON, CONF_PASSWORD, CONF_URL, DOMAIN, LOGGER
+from .const import (
+    CONF_ENTRY_TYPE,
+    CONF_IS_ADDON,
+    CONF_PASSWORD,
+    CONF_URL,
+    DOMAIN,
+    ENTRY_TYPE_SERVICE,
+    ENTRY_TYPE_TTS_PROXY,
+    LOGGER,
+)
+from .tts_flow import (
+    FreyaTtsFlowMixin,
+    async_get_available_tts_entities,
+)
 
 MIN_HA_VERSION = "2026.2.0"
 
@@ -77,7 +90,46 @@ async def _async_find_freya_addon(hass: HomeAssistant) -> dict[str, Any] | None:
     return None
 
 
-class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
+async def _async_validate_service_connection(
+    hass: HomeAssistant,
+    url: str,
+    password: str | None = None,
+) -> dict[str, str]:
+    """Validate connection to Freya server and return errors mapping if any."""
+    client = FreyaApiClient(url, async_get_clientsession(hass), password)
+    try:
+        await client.async_validate_connection()
+        return {}
+    except FreyaApiClientAuthenticationError:
+        return {"base": "invalid_auth"}
+    except FreyaApiClientIncompatibleVersionError:
+        return {"base": "incompatible_version"}
+    except FreyaApiClientCommunicationError:
+        return {"base": "cannot_connect"}
+    except Exception:
+        return {"base": "unknown"}
+
+
+async def _async_resolve_addon_service(
+    hass: HomeAssistant,
+) -> tuple[str, dict[str, Any] | None, str | None, dict[str, str]]:
+    """Resolve and validate Freya Add-on deployment status and endpoint."""
+    if "hassio" not in hass.config.components:
+        return ("not_hassio", None, None, {})
+
+    freya_addon = await _async_find_freya_addon(hass)
+    if freya_addon is None:
+        return ("not_installed", None, None, {})
+
+    if freya_addon["state"] != "started":
+        return ("not_running", freya_addon, None, {})
+
+    internal_url = f"http://{freya_addon['hostname']}:3000"
+    errors = await _async_validate_service_connection(hass, internal_url, "")
+    return ("ready", freya_addon, internal_url, errors)
+
+
+class FreyaFlowHandler(FreyaTtsFlowMixin, config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Freya.
     Freya UI 配置流处理器。
     """
@@ -85,6 +137,7 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     _addon_slug: str | None = None
     _internal_url: str | None = None
+    _pending_service_data: dict[str, Any] | None = None
 
     async def async_step_hassio(
         self,
@@ -125,13 +178,12 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         处理用户对自动发现的确认。
         """
         if user_input is not None:
-            return self.async_create_entry(
-                title="Freya",
-                data={
+            return await self._async_finish_service_setup(
+                {
                     CONF_URL: self._internal_url,
                     CONF_PASSWORD: "",
                     CONF_IS_ADDON: True,
-                },
+                }
             )
 
         return self.async_show_form(
@@ -149,6 +201,13 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if AwesomeVersion(HA_VERSION) < AwesomeVersion(MIN_HA_VERSION):
             return self.async_abort(reason="unsupported_ha_version")
 
+        has_service = any(
+            entry.data.get(CONF_ENTRY_TYPE, ENTRY_TYPE_SERVICE) == ENTRY_TYPE_SERVICE
+            for entry in self._async_current_entries()
+        )
+        if has_service:
+            return await self.async_step_tts_proxy_add()
+
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
@@ -161,6 +220,9 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a reconfiguration flow.
         处理重新配置流程。
         """
+        reconfigure_entry = self._get_reconfigure_entry()
+        if reconfigure_entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_TTS_PROXY:
+            return await self.async_step_tts_proxy_reconfigure(user_input)
         return await self._async_handle_addon_connection()
 
     async def async_step_reauth(
@@ -184,13 +246,9 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             password = user_input.get(CONF_PASSWORD, "")
-            client = FreyaApiClient(
-                reauth_entry.data[CONF_URL],
-                async_get_clientsession(self.hass),
-                password,
-            )
-            try:
-                await client.async_validate_connection()
+            url = reauth_entry.data[CONF_URL]
+            errors = await _async_validate_service_connection(self.hass, url, password)
+            if not errors:
                 return self.async_update_reload_and_abort(
                     reauth_entry,
                     data={
@@ -198,14 +256,6 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_PASSWORD: password,
                     },
                 )
-            except FreyaApiClientAuthenticationError:
-                errors["base"] = "invalid_auth"
-            except FreyaApiClientIncompatibleVersionError:
-                errors["base"] = "incompatible_version"
-            except FreyaApiClientCommunicationError:
-                errors["base"] = "cannot_connect"
-            except Exception:
-                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="reauth_confirm",
@@ -224,56 +274,37 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle connection verification and entry creation or update.
         统一处理 Freya 应用的状态检测、连通性验证与入口创建或更新。
         """
-        if "hassio" not in self.hass.config.components:
-            return await self.async_step_manual_config()
+        status, addon_info, internal_url, errors = await _async_resolve_addon_service(self.hass)
 
-        freya_addon = await _async_find_freya_addon(self.hass)
+        if status == "not_hassio":
+            return await self.async_step_manual_config()
 
         if self.source == config_entries.SOURCE_RECONFIGURE:
             reconfigure_entry = self._get_reconfigure_entry()
             is_addon_before = reconfigure_entry.data.get(CONF_IS_ADDON, False)
-            if not is_addon_before or freya_addon is None:
+            if not is_addon_before or status == "not_installed":
                 return await self.async_step_manual_config()
 
-        if freya_addon is None:
+        if status == "not_installed":
             return await self.async_step_choose_install()
 
-        self._addon_slug = freya_addon["slug"]
+        self._addon_slug = addon_info["slug"]
 
-        if freya_addon["state"] != "started":
+        if status == "not_running":
             return await self.async_step_not_running()
 
-        internal_url = f"http://{freya_addon['hostname']}:3000"
-
-        client = FreyaApiClient(internal_url, async_get_clientsession(self.hass))
-        try:
-            await client.async_validate_connection()
-        except FreyaApiClientIncompatibleVersionError:
+        if errors.get("base") == "incompatible_version":
             return self.async_abort(reason="incompatible_version")
-        except FreyaApiClientCommunicationError:
+        if errors:
             return await self.async_step_cannot_connect()
 
-        if self.source == config_entries.SOURCE_RECONFIGURE:
-            reconfigure_entry = self._get_reconfigure_entry()
-            return self.async_update_reload_and_abort(
-                reconfigure_entry,
-                data={
-                    **reconfigure_entry.data,
-                    CONF_URL: internal_url,
-                    CONF_PASSWORD: "",
-                    CONF_IS_ADDON: True,
-                },
-            )
-
-        return self.async_create_entry(
-            title="Freya",
-            data={
+        return await self._async_finish_service_setup(
+            {
                 CONF_URL: internal_url,
                 CONF_PASSWORD: "",
                 CONF_IS_ADDON: True,
-            },
+            }
         )
-
 
     async def async_step_choose_install(
         self,
@@ -298,37 +329,15 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             url = user_input[CONF_URL]
             password = user_input.get(CONF_PASSWORD, "")
-
-            client = FreyaApiClient(url, async_get_clientsession(self.hass), password)
-            try:
-                await client.async_validate_connection()
-                if self.source == config_entries.SOURCE_RECONFIGURE:
-                    reconfigure_entry = self._get_reconfigure_entry()
-                    return self.async_update_reload_and_abort(
-                        reconfigure_entry,
-                        data={
-                            **reconfigure_entry.data,
-                            CONF_URL: url,
-                            CONF_PASSWORD: password,
-                            CONF_IS_ADDON: False,
-                        },
-                    )
-                return self.async_create_entry(
-                    title="Freya",
-                    data={
+            errors = await _async_validate_service_connection(self.hass, url, password)
+            if not errors:
+                return await self._async_finish_service_setup(
+                    {
                         CONF_URL: url,
                         CONF_PASSWORD: password,
                         CONF_IS_ADDON: False,
-                    },
+                    }
                 )
-            except FreyaApiClientAuthenticationError:
-                errors["base"] = "invalid_auth"
-            except FreyaApiClientIncompatibleVersionError:
-                errors["base"] = "incompatible_version"
-            except FreyaApiClientCommunicationError:
-                errors["base"] = "cannot_connect"
-            except Exception:
-                errors["base"] = "unknown"
 
         default_url = ""
         default_password = ""
@@ -407,3 +416,27 @@ class FreyaFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="cannot_connect",
             description_placeholders={"app_info_url": app_info_url},
         )
+
+    async def _async_finish_service_setup(
+        self,
+        service_data: dict[str, Any],
+    ) -> config_entries.ConfigFlowResult:
+        """Finish service configuration and create service entry."""
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            reconfigure_entry = self._get_reconfigure_entry()
+            return self.async_update_reload_and_abort(
+                reconfigure_entry,
+                data={
+                    **reconfigure_entry.data,
+                    **service_data,
+                    CONF_ENTRY_TYPE: ENTRY_TYPE_SERVICE,
+                },
+            )
+
+        data = {**service_data, CONF_ENTRY_TYPE: ENTRY_TYPE_SERVICE}
+        available_tts = async_get_available_tts_entities(self.hass)
+        if not available_tts:
+            return self.async_create_entry(title="Freya", data=data)
+
+        self._pending_service_data = data
+        return await self.async_step_tts_proxy_optional()

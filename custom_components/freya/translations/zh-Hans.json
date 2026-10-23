@@ -40,6 +40,30 @@
                 "data": {
                     "password": "访问凭证/密码"
                 }
+            },
+            "tts_proxy_optional": {
+                "title": "配置 Freya AI TTS (可选)",
+                "description": "选择一个底层 TTS 实体，使 AI 产生的文字更适合语音朗读。留空直接提交可跳过。",
+                "data": {
+                    "tts_proxy_target": "底层 TTS 实体 (留空跳过)",
+                    "tts_proxy_name": "实体名称 (选填)"
+                }
+            },
+            "tts_proxy_add": {
+                "title": "添加 Freya AI TTS",
+                "description": "选择一个底层 TTS 实体，使 AI 产生的文字更适合语音朗读。",
+                "data": {
+                    "tts_proxy_target": "底层 TTS 实体",
+                    "tts_proxy_name": "实体名称 (选填)"
+                }
+            },
+            "tts_proxy_reconfigure": {
+                "title": "配置 Freya AI TTS",
+                "description": "调整绑定的底层 TTS 实体或实体名称。",
+                "data": {
+                    "tts_proxy_target": "底层 TTS 实体",
+                    "tts_proxy_name": "实体名称 (留空保留当前名称)"
+                }
             }
         },
         "error": {
@@ -54,6 +78,8 @@
             "cannot_connect": "无法连接至 Freya 应用通信服务，请确认应用正常运行。",
             "incompatible_version": "Freya 服务端版本不兼容，无法建立连接。",
             "unsupported_ha_version": "Freya 需要 Home Assistant 2026.2.0 或更高版本以支持全新的 App 架构，请先更新您的 Home Assistant 系统。",
+            "no_tts_available": "系统中未检测到可用的 TTS 引擎，请先安装配置 TTS 后再添加 Freya AI TTS。",
+            "all_tts_configured": "系统中所有检测到的 TTS 引擎均已配置 Freya AI TTS，无需重复添加。",
             "reconfigure_successful": "Freya 连接配置已重新同步并生效。",
             "reauth_successful": "Freya 访问凭据已成功更新并重新建立连接。"
         }
