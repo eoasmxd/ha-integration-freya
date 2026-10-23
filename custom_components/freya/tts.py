@@ -6,6 +6,13 @@ from __future__ import annotations
 
 from typing import Any
 
+try:
+    from homeassistant.components.tts import DATA_COMPONENT
+except ImportError:
+    from homeassistant.components.tts.const import DOMAIN as TTS_DOMAIN
+
+    DATA_COMPONENT = TTS_DOMAIN
+
 from homeassistant.components.tts import TextToSpeechEntity, TtsAudioType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -54,7 +61,7 @@ class FreyaCleanTextTtsEntity(TextToSpeechEntity):
 
     def _get_target_entity(self) -> TextToSpeechEntity | None:
         """Retrieve the target TTS entity from entity component registry."""
-        tts_component = self.hass.data.get("entity_components", {}).get("tts")
+        tts_component = self.hass.data.get(DATA_COMPONENT)
         if not tts_component:
             return None
         entity = tts_component.get_entity(self._target_entity_id)

@@ -23,7 +23,6 @@ from .const import (
     CONF_TTS_PROXY_TARGET,
     DOMAIN,
     ENTRY_TYPE_TTS_PROXY,
-    LOGGER,
 )
 
 
@@ -64,14 +63,10 @@ def async_get_available_tts_entities(
 
 
 def async_suggest_tts_proxy_name(hass: HomeAssistant, target_entity_id: str) -> str:
-    """Generate a clean default display name based on the target TTS entity."""
+    """Generate a default display name based on the target TTS entity."""
     state = hass.states.get(target_entity_id)
     friendly_name = (state.attributes.get("friendly_name") if state else None) or target_entity_id
-    clean_target = friendly_name
-    for suffix in (" TTS", " tts"):
-        if clean_target.endswith(suffix):
-            clean_target = clean_target[: -len(suffix)].strip()
-    return f"Freya AI - {clean_target}"
+    return f"Freya AI - {friendly_name}"
 
 
 if TYPE_CHECKING:
