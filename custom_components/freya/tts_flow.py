@@ -64,9 +64,15 @@ def async_get_available_tts_entities(
 
 def async_suggest_tts_proxy_name(hass: HomeAssistant, target_entity_id: str) -> str:
     """Generate a default display name based on the target TTS entity."""
-    state = hass.states.get(target_entity_id)
-    friendly_name = (state.attributes.get("friendly_name") if state else None) or target_entity_id
-    return f"Freya AI - {friendly_name}"
+    clean_name: str | None = None
+    if entity_entry := er.async_get(hass).async_get(target_entity_id):
+        clean_name = entity_entry.name or entity_entry.original_name
+
+    if not clean_name and (state := hass.states.get(target_entity_id)):
+        clean_name = state.attributes.get("friendly_name") or state.name
+
+    clean_name = clean_name or target_entity_id.split(".")[-1].replace("_", " ").title()
+    return f"Freya AI - {clean_name}"
 
 
 if TYPE_CHECKING:

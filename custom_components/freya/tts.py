@@ -37,8 +37,7 @@ async def async_setup_entry(
 class FreyaCleanTextTtsEntity(TextToSpeechEntity):
     """Text-to-speech proxy entity that cleans text before forwarding."""
 
-    _attr_has_entity_name = True
-    _attr_name = None
+    _attr_has_entity_name = False
 
     def __init__(
         self,
@@ -50,6 +49,7 @@ class FreyaCleanTextTtsEntity(TextToSpeechEntity):
         self.entry = entry
         self._target_entity_id = target_entity_id
         self._proxy_name = proxy_name
+        self._attr_name = proxy_name
         self._attr_unique_id = f"{entry.entry_id}_tts"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
