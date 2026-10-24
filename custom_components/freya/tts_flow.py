@@ -216,6 +216,7 @@ class FreyaTtsFlowMixin(_BaseMixin):
 
             return self.async_update_reload_and_abort(
                 reconfigure_entry,
+                title=async_suggest_tts_proxy_name(self.hass, target_tts),
                 unique_id=new_unique_id,
                 data=updated_data,
             )
