@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_TTS_PROXY_NAME, CONF_TTS_PROXY_TARGET, DOMAIN, LOGGER
+from .const import CONF_TTS_PROXY_TARGET, DOMAIN, LOGGER
 from .util import clean_plain_text
 
 
@@ -30,30 +30,27 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Freya clean-text TTS proxy entity."""
     target_tts = entry.data.get(CONF_TTS_PROXY_TARGET, "")
-    proxy_name = entry.data.get(CONF_TTS_PROXY_NAME, entry.title or "Freya AI TTS")
-    async_add_entities([FreyaCleanTextTtsEntity(entry, target_tts, proxy_name)])
+    async_add_entities([FreyaCleanTextTtsEntity(entry, target_tts)])
 
 
 class FreyaCleanTextTtsEntity(TextToSpeechEntity):
     """Text-to-speech proxy entity that cleans text before forwarding."""
 
-    _attr_has_entity_name = False
+    _attr_has_entity_name = True
+    _attr_name = None
 
     def __init__(
         self,
         entry: ConfigEntry,
         target_entity_id: str,
-        proxy_name: str,
     ) -> None:
         """Initialize the TTS proxy entity."""
         self.entry = entry
         self._target_entity_id = target_entity_id
-        self._proxy_name = proxy_name
-        self._attr_name = proxy_name
         self._attr_unique_id = f"{entry.entry_id}_tts"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name=proxy_name,
+            name=entry.title,
             manufacturer="Freya",
             model="Freya AI TTS",
             entry_type=DeviceEntryType.SERVICE,

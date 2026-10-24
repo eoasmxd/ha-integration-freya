@@ -50,9 +50,9 @@ class FreyaConversationEntity(ConversationEntity):
         self._attr_unique_id = DOMAIN
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title or "Freya",
+            name="Freya",
             manufacturer="Freya",
-            model="Freya AI Agent",
+            model="Freya AI Conversation",
             entry_type=DeviceEntryType.SERVICE,
         )
 

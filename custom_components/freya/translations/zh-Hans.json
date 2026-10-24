@@ -45,24 +45,21 @@
                 "title": "配置 Freya AI TTS (可选)",
                 "description": "选择一个底层 TTS 实体，使 AI 产生的文字更适合语音朗读。留空直接提交可跳过。",
                 "data": {
-                    "tts_proxy_target": "底层 TTS 实体 (留空跳过)",
-                    "tts_proxy_name": "实体名称 (选填)"
+                    "tts_proxy_target": "底层 TTS 实体 (留空跳过)"
                 }
             },
             "tts_proxy_add": {
                 "title": "添加 Freya AI TTS",
                 "description": "选择一个底层 TTS 实体，使 AI 产生的文字更适合语音朗读。",
                 "data": {
-                    "tts_proxy_target": "底层 TTS 实体",
-                    "tts_proxy_name": "实体名称 (选填)"
+                    "tts_proxy_target": "底层 TTS 实体"
                 }
             },
             "tts_proxy_reconfigure": {
                 "title": "配置 Freya AI TTS",
-                "description": "调整绑定的底层 TTS 实体或实体名称。",
+                "description": "调整绑定的底层 TTS 实体。",
                 "data": {
-                    "tts_proxy_target": "底层 TTS 实体",
-                    "tts_proxy_name": "实体名称 (留空保留当前名称)"
+                    "tts_proxy_target": "底层 TTS 实体"
                 }
             }
         },
