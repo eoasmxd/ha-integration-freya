@@ -13,13 +13,11 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
-    TextSelector,
 )
 
 from .const import (
     CONF_ENTRY_TYPE,
     CONF_PENDING_TTS_PROXY,
-    CONF_TTS_PROXY_NAME,
     CONF_TTS_PROXY_TARGET,
     DOMAIN,
     ENTRY_TYPE_TTS_PROXY,
@@ -94,24 +92,18 @@ class FreyaTtsFlowMixin(_BaseMixin):
         available_tts = async_get_available_tts_entities(self.hass)
         pending_service = getattr(self, "_pending_service_data", None)
         if not available_tts or not pending_service:
-            return self.async_create_entry(title="Freya", data=pending_service or {})
+            return self.async_create_entry(title="Freya AI Conversation", data=pending_service or {})
 
         if user_input is not None:
             target_tts = user_input.get(CONF_TTS_PROXY_TARGET)
             final_data = dict(pending_service)
             if target_tts and target_tts != "none":
-                raw_name = user_input.get(CONF_TTS_PROXY_NAME)
-                if isinstance(raw_name, str) and raw_name.strip():
-                    proxy_name = raw_name.strip()
-                else:
-                    proxy_name = async_suggest_tts_proxy_name(self.hass, target_tts)
                 final_data[CONF_PENDING_TTS_PROXY] = {
                     CONF_TTS_PROXY_TARGET: target_tts,
-                    CONF_TTS_PROXY_NAME: proxy_name,
                 }
 
             return self.async_create_entry(
-                title="Freya",
+                title="Freya AI Conversation",
                 data=final_data,
             )
 
@@ -123,7 +115,6 @@ class FreyaTtsFlowMixin(_BaseMixin):
                         include_entities=available_tts,
                     )
                 ),
-                vol.Optional(CONF_TTS_PROXY_NAME): TextSelector(),
             }
         )
 
@@ -140,13 +131,11 @@ class FreyaTtsFlowMixin(_BaseMixin):
         target_tts = user_input[CONF_TTS_PROXY_TARGET]
         await self.async_set_unique_id(f"{DOMAIN}_tts_{target_tts}")
         self._abort_if_unique_id_configured()
-        proxy_name = user_input.get(CONF_TTS_PROXY_NAME) or async_suggest_tts_proxy_name(self.hass, target_tts)
         return self.async_create_entry(
-            title=proxy_name,
+            title=async_suggest_tts_proxy_name(self.hass, target_tts),
             data={
                 CONF_ENTRY_TYPE: ENTRY_TYPE_TTS_PROXY,
                 CONF_TTS_PROXY_TARGET: target_tts,
-                CONF_TTS_PROXY_NAME: proxy_name,
             },
         )
 
@@ -166,18 +155,11 @@ class FreyaTtsFlowMixin(_BaseMixin):
             await self.async_set_unique_id(f"{DOMAIN}_tts_{target_tts}")
             self._abort_if_unique_id_configured()
 
-            raw_name = user_input.get(CONF_TTS_PROXY_NAME)
-            if isinstance(raw_name, str) and raw_name.strip():
-                proxy_name = raw_name.strip()
-            else:
-                proxy_name = async_suggest_tts_proxy_name(self.hass, target_tts)
-
             return self.async_create_entry(
-                title=proxy_name,
+                title=async_suggest_tts_proxy_name(self.hass, target_tts),
                 data={
                     CONF_ENTRY_TYPE: ENTRY_TYPE_TTS_PROXY,
                     CONF_TTS_PROXY_TARGET: target_tts,
-                    CONF_TTS_PROXY_NAME: proxy_name,
                 },
             )
 
@@ -192,7 +174,6 @@ class FreyaTtsFlowMixin(_BaseMixin):
                         include_entities=available_tts,
                     )
                 ),
-                vol.Optional(CONF_TTS_PROXY_NAME): TextSelector(),
             }
         )
 
@@ -212,7 +193,6 @@ class FreyaTtsFlowMixin(_BaseMixin):
         )
 
         current_target = reconfigure_entry.data.get(CONF_TTS_PROXY_TARGET, "")
-        current_name = reconfigure_entry.data.get(CONF_TTS_PROXY_NAME, reconfigure_entry.title)
 
         selectable_tts = list(available_tts)
         if current_target and current_target not in selectable_tts:
@@ -223,22 +203,22 @@ class FreyaTtsFlowMixin(_BaseMixin):
 
         if user_input is not None:
             target_tts = user_input[CONF_TTS_PROXY_TARGET]
-            raw_name = user_input.get(CONF_TTS_PROXY_NAME)
-            proxy_name = raw_name.strip() if isinstance(raw_name, str) and raw_name.strip() else current_name
+            new_unique_id = f"{DOMAIN}_tts_{target_tts}"
 
             if target_tts != current_target:
-                await self.async_set_unique_id(f"{DOMAIN}_tts_{target_tts}")
+                await self.async_set_unique_id(new_unique_id)
                 self._abort_if_unique_id_configured()
+
+            updated_data = {
+                CONF_ENTRY_TYPE: ENTRY_TYPE_TTS_PROXY,
+                CONF_TTS_PROXY_TARGET: target_tts,
+            }
 
             return self.async_update_reload_and_abort(
                 reconfigure_entry,
-                title=proxy_name,
-                data={
-                    **reconfigure_entry.data,
-                    CONF_TTS_PROXY_TARGET: target_tts,
-                    CONF_TTS_PROXY_NAME: proxy_name,
-                    CONF_ENTRY_TYPE: ENTRY_TYPE_TTS_PROXY,
-                },
+                title=async_suggest_tts_proxy_name(self.hass, target_tts),
+                unique_id=new_unique_id,
+                data=updated_data,
             )
 
         schema = vol.Schema(
@@ -252,7 +232,6 @@ class FreyaTtsFlowMixin(_BaseMixin):
                         include_entities=selectable_tts,
                     )
                 ),
-                vol.Optional(CONF_TTS_PROXY_NAME, default=current_name): TextSelector(),
             }
         )
 

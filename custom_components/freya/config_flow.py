@@ -436,7 +436,7 @@ class FreyaFlowHandler(FreyaTtsFlowMixin, config_entries.ConfigFlow, domain=DOMA
         data = {**service_data, CONF_ENTRY_TYPE: ENTRY_TYPE_SERVICE}
         available_tts = async_get_available_tts_entities(self.hass)
         if not available_tts:
-            return self.async_create_entry(title="Freya", data=data)
+            return self.async_create_entry(title="Freya AI Conversation", data=data)
 
         self._pending_service_data = data
         return await self.async_step_tts_proxy_optional()
