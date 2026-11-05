@@ -12,14 +12,12 @@ import time
 from typing import Any
 import uuid
 import voluptuous as vol
-from aiohttp import web
-from homeassistant.components.http import HomeAssistantView
+
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, HomeAssistantError
-from homeassistant.helpers import config_validation as cv, issue_registry as ir
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.loader import async_get_loaded_integration
 
 from .api import (
     FreyaApiClient,
@@ -37,9 +35,7 @@ from .const import (
     DOMAIN,
     ENTRY_TYPE_SERVICE,
     ENTRY_TYPE_TTS_PROXY,
-    ISSUE_RESTART_REQUIRED,
     LOGGER,
-    NOTIFICATION_ID_UPDATE,
     SERVICE_CHAT,
 )
 from .data import FreyaConfigEntry, FreyaData
@@ -181,7 +177,6 @@ async def async_setup_entry(
 
     entry.runtime_data = FreyaData(
         client=client,
-        integration=async_get_loaded_integration(hass, entry.domain),
     )
 
     try:
@@ -194,14 +189,6 @@ async def async_setup_entry(
         pass
 
     await client.async_connect()
-
-    ir.async_delete_issue(hass, DOMAIN, ISSUE_RESTART_REQUIRED)
-    await hass.services.async_call(
-        "persistent_notification",
-        "dismiss",
-        {"notification_id": NOTIFICATION_ID_UPDATE},
-        blocking=False,
-    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -290,10 +277,6 @@ async def async_setup_entry(
             supports_response=SupportsResponse.OPTIONAL,
         )
 
-    if "http_view_registered" not in hass.data.setdefault(DOMAIN, {}):
-        hass.http.register_view(FreyaNotifyUpdateView)
-        hass.data[DOMAIN]["http_view_registered"] = True
-
     if pending_proxy := entry.data.get(CONF_PENDING_TTS_PROXY):
         new_data = {k: v for k, v in entry.data.items() if k != CONF_PENDING_TTS_PROXY}
         hass.config_entries.async_update_entry(entry, data=new_data)
@@ -305,48 +288,6 @@ async def async_setup_entry(
             )
         )
     return True
-
-
-class FreyaNotifyUpdateView(HomeAssistantView):
-    """Handle internal update notifications from Freya Addon/Deployer.
-    处理来自部署器的内部集成更新通知。
-    """
-
-    url = "/api/freya/notify_update"
-    name = "api:freya:notify_update"
-    requires_auth = True
-
-    async def post(self, request: web.Request) -> web.Response:
-        """Handle POST request to create update repair issue."""
-        hass: HomeAssistant = request.app["hass"]
-        data: dict[str, Any] = await request.json() if request.can_read_body else {}
-        version = data.get("version", "")
-        if not version:
-            loaded_entries = hass.config_entries.async_loaded_entries(DOMAIN)
-            service_entry = next(
-                (e for e in loaded_entries if getattr(e, "runtime_data", None)), None
-            )
-            if service_entry:
-                version = service_entry.runtime_data.integration.manifest.get("version", "")
-            else:
-                try:
-                    integration = async_get_loaded_integration(hass, DOMAIN)
-                    version = integration.manifest.get("version", "")
-                except Exception:
-                    version = ""
-
-        ir.async_create_issue(
-            hass,
-            domain=DOMAIN,
-            issue_id=ISSUE_RESTART_REQUIRED,
-            is_fixable=True,
-            issue_domain=DOMAIN,
-            severity=ir.IssueSeverity.WARNING,
-            translation_key="restart_required",
-            translation_placeholders={"version": version or "latest"},
-        )
-        LOGGER.info("Created restart required issue via HTTP endpoint for Freya version %s", version)
-        return self.json({"success": True})
 
 
 async def async_unload_entry(

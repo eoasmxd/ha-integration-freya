@@ -15,7 +15,7 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 - **Conversation Assistant**: Acts as a native `conversation` agent for Home Assistant Assist (voice & text chat).
 - **Automation Action (`freya.chat`)**: Enables calling the agent from scripts and automations with support for multi-turn sessions, dynamic toolbox activation, skill routing, and response capture.
 
-> 💡 **Prerequisite**: The official [Freya App](https://github.com/eoasmxd/ha-addons) must be installed and running in Home Assistant.
+> 💡 **Prerequisite**: Freya server must be running (either as a Home Assistant App or as a standalone service).
 
 ### ✨ Features
 
@@ -27,37 +27,33 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
   - `toolboxes`: Pass allowed toolbox IDs (e.g. `["homeassistant"]`).
   - `skill_id`: Prioritize or trigger dedicated skills.
   - **Response**: Captures agent text response (`text`) via `response_variable`.
-- 🔍 **App Status Detection & Wizard**: Automatically detects the local Freya App status and guides you through setup seamlessly.
 
-### Installation
+### Installation & Setup
 
-#### Method 1: Automatic Deployment via Freya App (Recommended)
+#### Step 1: Install Integration (via HACS)
 
-1. Add the official repository and install the [Freya App](https://github.com/eoasmxd/ha-addons):
-   [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
-2. The app automatically deploys the integration into your `custom_components/freya` directory upon startup.
-3. Restart Home Assistant to load the integration.
+[![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=eoasmxd&repository=ha-integration-freya)
 
-#### Method 2: Via HACS (Custom Repository)
+1. Click the badge above to open the repository directly in Home Assistant, or open **HACS -> Integrations** and search for **Freya** (if not found yet, add `https://github.com/eoasmxd/ha-integration-freya` as a **Custom repository** with category `Integration`).
+2. Click **Download**, then restart Home Assistant after the download completes.
 
-1. In Home Assistant, open **HACS -> Integrations**.
-2. Click the three dots menu (top right) and select **Custom repositories**.
-3. Add repository URL: `https://github.com/eoasmxd/ha-integration-freya` with category `Integration`.
-4. Click **Download**, then restart Home Assistant.
+#### Step 2: Run Freya Server
 
-#### Method 3: Manual Installation
+Freya integration communicates with the Freya Agent server. Run the server using one of the following methods:
 
-1. Download the latest release archive from [Releases](https://github.com/eoasmxd/ha-integration-freya/releases).
-2. Extract the `custom_components/freya` folder into your Home Assistant `<config>/custom_components/freya`.
-3. Restart Home Assistant.
+- **Option A: Home Assistant App (Recommended)**
+  [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+  Click the badge above to add the official repository, then install and start the **Freya** app.
+- **Option B: Standalone / Docker Deployment**
+  Follow the [Freya documentation](https://github.com/eoasmxd/freya) to run the server in a container or external host.
 
-### Configuration
+#### Step 3: Add Integration
 
 1. In Home Assistant, go to **Settings -> Devices & services -> Add integration**.
-2. Search for **Freya AI Agent**.
-3. The wizard will automatically check the Freya App status:
-   - If the app is running, it connects automatically.
-   - If the app is not installed or stopped, the wizard guides you to add repository & install, or start it directly.
+2. Search for and select **Freya AI Agent**.
+3. Complete the setup wizard:
+   - **App Deployment**: The wizard detects and connects to the local app automatically.
+   - **Standalone Deployment**: Enter the server URL (e.g. `http://192.168.1.100:3000`) and optional access token/password.
 
 ### Service Usage Example
 
@@ -80,7 +76,7 @@ response_variable: agent_reply
 - **对话代理助手**：作为原生 `conversation` 平台实体，可直接设为 Assist 对话助手（支持语音与文字聊天）。
 - **自动化动作 (`freya.chat`)**：在自动化、脚本中直接调度智能体，支持多轮会话记忆、工具箱动态指派、技能路由及响应数据返回。
 
-> 💡 **前置要求**：需在 Home Assistant 中安装并运行官方 [Freya 应用](https://github.com/eoasmxd/ha-addons)。
+> 💡 **前置要求**：需运行 Freya 智能体服务（支持以 Home Assistant 应用或独立外部服务形式运行）。
 
 ### ✨ 核心特性
 
@@ -92,37 +88,32 @@ response_variable: agent_reply
   - `toolboxes`：可选工具箱列表（如 `["homeassistant"]`），按需激活工具权限。
   - `skill_id`：可选技能标识，直接命中指定任务技能。
   - **响应数据**：支持在自动化中通过 `response_variable` 接收智能体文本回复（通过 `.text` 获取）。
-- 🔍 **应用状态检测与引导**：自动检测本地 Freya 应用运行状态，并在未安装或未启动时提供无缝引导。
 
-### 安装方法
+### 安装与配置
 
-#### 方式一：通过 Freya 应用自动部署（首推 / 推荐）
+#### 第一步：安装集成 (HACS)
 
-1. 将官方应用仓库添加至 Home Assistant 并安装 [Freya 应用](https://github.com/eoasmxd/ha-addons)：
-   [![在 Home Assistant 中添加此仓库](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
-2. 应用在启动时会自动将集成部署至 `custom_components/freya` 目录。
-3. 重启 Home Assistant 即可完成集成加载。
+[![在 Marketplace 中打开此存储库](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=eoasmxd&repository=ha-integration-freya)
 
-#### 方式二：通过 HACS 安装（自定义存储库）
+1. 点击上方徽章直接在 Home Assistant 中打开，或前往 **HACS -> 集成** 搜索 **Freya**（若尚未收录，可在右上角菜单 **自定义存储库** 中添加 `https://github.com/eoasmxd/ha-integration-freya`，类别选择 **集成 (Integration)**）。
+2. 点击 **下载**，下载完成后**重启 Home Assistant**。
 
-1. 在 Home Assistant 中打开 **HACS -> 集成**。
-2. 点击右上角菜单（三个点），选择 **自定义存储库**。
-3. 填入仓库地址：`https://github.com/eoasmxd/ha-integration-freya`，类型选择 **集成 (Integration)**。
-4. 点击 **下载** 并重启 Home Assistant。
+#### 第二步：运行 Freya 服务端
 
-#### 方式三：手动下载安装
+Freya 集成需与 Freya 智能体服务协同工作，支持以下任一方式运行：
 
-1. 从 [Releases 页面](https://github.com/eoasmxd/ha-integration-freya/releases) 下载最新发行版压缩包。
-2. 将其中的 `custom_components/freya` 目录复制至 Home Assistant 配置目录下的 `custom_components/freya`。
-3. 重启 Home Assistant。
+- **方式 A：通过 Home Assistant 应用运行（推荐）**
+  [![在 Home Assistant 中添加此仓库](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+  点击上方徽章添加官方仓库，安装并启动 **Freya** 应用。
+- **方式 B：外部独立 / Docker 部署**
+  参考 [Freya 核心项目文档](https://github.com/eoasmxd/freya) 在外部服务器或容器中运行 Freya 服务。
 
-### 配置指南
+#### 第三步：添加并启用集成
 
-1. 打开 Home Assistant，进入 **设置 -> 设备与服务 -> 添加集成**。
-2. 搜索并选择 **Freya AI Agent**。
-3. 向导会自动检测本地 Freya 应用的状态：
-   - 若应用已运行，将自动完成连接与配置；
-   - 若尚未安装或未启动，向导将直接引导你添加仓库安装或一键启动应用。
+1. 前往 **设置 -> 设备与服务 -> 添加集成**，搜索并选择 **Freya AI Agent**。
+2. 根据向导完成连接：
+   - **应用部署**：向导会自动识别本地应用并完成连接；
+   - **独立部署**：按提示输入服务地址（如 `http://192.168.1.100:3000`）及访问密码。
 
 ### 服务调用示例
 
