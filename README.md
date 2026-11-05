@@ -42,7 +42,9 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 Freya integration communicates with the Freya Agent server. Run the server using one of the following methods:
 
 - **Option A: Home Assistant App (Recommended)**
+
   [![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+
   Click the badge above to add the official repository, then install and start the **Freya** app.
 - **Option B: Standalone / Docker Deployment**
   Follow the [Freya documentation](https://github.com/eoasmxd/freya) to run the server in a container or external host.
@@ -103,7 +105,9 @@ response_variable: agent_reply
 Freya 集成需与 Freya 智能体服务协同工作，支持以下任一方式运行：
 
 - **方式 A：通过 Home Assistant 应用运行（推荐）**
+
   [![在 Home Assistant 中添加此仓库](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Feoasmxd%2Fha-addons)
+
   点击上方徽章添加官方仓库，安装并启动 **Freya** 应用。
 - **方式 B：外部独立 / Docker 部署**
   参考 [Freya 核心项目文档](https://github.com/eoasmxd/freya) 在外部服务器或容器中运行 Freya 服务。
