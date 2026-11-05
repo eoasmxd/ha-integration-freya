@@ -10,12 +10,11 @@
   ],
   "config_flow": true,
   "dependencies": [
-    "conversation",
-    "http"
+    "conversation"
   ],
   "documentation": "https://github.com/eoasmxd/ha-integration-freya",
   "integration_type": "service",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/eoasmxd/ha-integration-freya/issues",
-  "version": "1.0.4"
+  "version": "1.0.5"
 }

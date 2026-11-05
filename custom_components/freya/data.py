@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.loader import Integration
 
 from .api import FreyaApiClient
 
@@ -41,7 +40,6 @@ class FreyaData:
     """
 
     client: FreyaApiClient
-    integration: Integration
 
 
 FreyaConfigEntry = ConfigEntry[FreyaData]
