@@ -30,12 +30,12 @@ This custom integration bridges Home Assistant with the **Freya AI Agent**:
 
 ### Installation & Setup
 
-#### Step 1: Install Integration
+#### Step 1: Install Integration (via HACS)
 
 [![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=eoasmxd&repository=ha-integration-freya)
 
-1. Click the button above to open and download the integration in Home Assistant.
-2. Restart Home Assistant after the download completes.
+1. Click the badge above to open the repository directly in Home Assistant, or open **HACS -> Integrations** and search for **Freya** (if not found yet, add `https://github.com/eoasmxd/ha-integration-freya` as a **Custom repository** with category `Integration`).
+2. Click **Download**, then restart Home Assistant after the download completes.
 
 #### Step 2: Run Freya Server
 
@@ -91,12 +91,12 @@ response_variable: agent_reply
 
 ### 安装与配置
 
-#### 第一步：安装集成 (Integration)
+#### 第一步：安装集成 (HACS)
 
 [![在 Marketplace 中打开此存储库](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=eoasmxd&repository=ha-integration-freya)
 
-1. 点击上方徽章直接在 Home Assistant 中打开并下载本集成。
-2. 下载完成后，**重启 Home Assistant**。
+1. 点击上方徽章直接在 Home Assistant 中打开，或前往 **HACS -> 集成** 搜索 **Freya**（若尚未收录，可在右上角菜单 **自定义存储库** 中添加 `https://github.com/eoasmxd/ha-integration-freya`，类别选择 **集成 (Integration)**）。
+2. 点击 **下载**，下载完成后**重启 Home Assistant**。
 
 #### 第二步：运行 Freya 服务端
 
